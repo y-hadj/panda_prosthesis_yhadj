@@ -1,4 +1,5 @@
-add_library(BoneTagSerial SHARED BoneTagSerial.cpp)
+#add_library(BoneTagSerial SHARED BoneTagSerial.cpp)
+add_library(BoneTagSerial SHARED BoneTagSerial.cpp Packet.cpp)
 target_link_libraries(BoneTagSerial PUBLIC mc_rtc::mc_rtc_utils)
 
 install(TARGETS BoneTagSerial
@@ -6,8 +7,8 @@ install(TARGETS BoneTagSerial
   LIBRARY DESTINATION "${MC_RTC_LIBDIR}"
   RUNTIME DESTINATION bin)
 
-add_executable(TestBoneTagUSB test_bonetag_usb.cpp)
-target_link_libraries(TestBoneTagUSB PUBLIC BoneTagSerial)
+# add_executable(TestBoneTagUSB test_bonetag_usb.cpp)
+# target_link_libraries(TestBoneTagUSB PUBLIC BoneTagSerial)
 
 
 
@@ -29,7 +30,7 @@ target_link_libraries(BoneTagSerialPlugin PUBLIC BoneTagSerial)
 install(FILES etc/BoneTagSerialPlugin.yaml DESTINATION ${MC_PLUGINS_RUNTIME_INSTALL_PREFIX}/etc/)
 
 install(
-  FILES scripts/reset_bonetag_serial
+  PROGRAMS scripts/reset_bonetag_serial
   DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
   PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE
 )

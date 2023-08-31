@@ -1,44 +1,56 @@
 #ifndef BONETAGSERIAL_H
 #define BONETAGSERIAL_H
+#include "Packet.hpp"
 #include <array>
 #include <fstream>
 #include <iostream>
+#include <mutex>
+#include <vector>
+#define SENSOR_COUNT 8
 namespace io
 {
 struct BoneTagSerial
 {
-  using Data = std::array<uint16_t, 4>;
-  using RawData = std::array<uint16_t, 8>;
+  using Data = std::array<uint16_t, SENSOR_COUNT>;
+  using RawData = std::array<uint16_t, SENSOR_COUNT>;
 
   BoneTagSerial();
   ~BoneTagSerial();
-  void open(const std::string & descriptor);
-  void close();
-  bool connected() const noexcept;
-  const Data & read();
 
-  bool debug_bytes = false;
-  bool debug_raw = false;
-  bool debug_results = false;
+  void open_serial_port(const std::string & portName, const int baudRate);
+  void close_serial_port();
+  bool connected();
+  void read_serial_port();
+  bool isConnected = false;
 
-  inline const std::string & descriptor() const noexcept
+  std::mutex received_data_mutex;
+  std::vector<Data> received_data;
+
+  int cycles_waited = 0;
+  int cycles_timeout = 5000;
+  bool serial_status = false;
+
+  bool debug_bytes = true;
+  bool debug_raw = true;
+  bool debug_results = true;
+
+  inline double alphaFilter() const noexcept
   {
-    return descriptor_;
+    return alphaFilter_;
+  }
+  void alphaFilter(double a)
+  {
+    alphaFilter_ = a;
   }
 
 protected:
-  void sync();
-  void get_input_data(bool print_bytes);
-  void get_results(bool print_bytes, bool print_raw, bool print_result);
-  void parse_data(bool print_raw_data);
-  void parse_result(bool print_result);
-  void print_input_data();
+  void parse_buffer(unsigned char * buff, size_t buff_len);
+  void apply_filter(std::array<uint16_t, SENSOR_COUNT> & raw_data);
+  bool validate_data(std::array<uint16_t, SENSOR_COUNT> & data);
 
 protected:
-  std::fstream f;
-  std::string descriptor_;
-  RawData rawData;
-  Data result;
+  int serialPort;
+  double alphaFilter_ = 0.3;
 };
 } // namespace io
 
