@@ -9,7 +9,7 @@ macro(find_description_package_optional PACKAGE)
   string(TOUPPER "${PACKAGE_PATH_VAR}" PACKAGE_PATH_VAR)
   find_package(${PACKAGE} QUIET)
   if(${PACKAGE}_FOUND)
-    find_description_package(brace_bottom_setup)
+    find_description_package(${PACKAGE})
   endif()
 endmacro()
 
