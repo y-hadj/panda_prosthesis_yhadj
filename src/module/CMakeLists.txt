@@ -1,4 +1,16 @@
+set(MODULE_INSTALL_LOCATION "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/")
+
 configure_file(config.h.in "${CMAKE_CURRENT_BINARY_DIR}/include/config.h")
+
+configure_file(urdf/bonetag_femur.in.urdf "${CMAKE_CURRENT_BINARY_DIR}/urdf/bonetag_femur.urdf")
+configure_file(yaml/bonetag_femur.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/yaml/bonetag_femur.yaml")
+# Configure the alias accordingly
+configure_file(alias/bonetag_femur.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/alias/bonetag_femur.yaml")
+# Install the alias
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/alias/bonetag_femur.yaml" DESTINATION "${MC_ROBOTS_ALIASES_DIRECTORY}")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/urdf/bonetag_femur.urdf" DESTINATION "${MODULE_INSTALL_LOCATION}/urdf")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/yaml/bonetag_femur.yaml" DESTINATION "${MODULE_INSTALL_LOCATION}/yaml")
+
 add_robot(PandaProsthesisModule module.cpp module.h)
 target_link_libraries(PandaProsthesisModule PUBLIC mc_panda::panda)
 target_include_directories(PandaProsthesisModule PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>)
@@ -22,8 +34,7 @@ if(brace_bottom_setup_FOUND)
   configure_file(yaml/brace_bottom_setup.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/yaml/brace_bottom_setup.yaml")
 
   # Install the YAML file
-  set(MODULE_INSTALL_LOCATION "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/")
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/yaml/brace_bottom_setup.yaml" DESTINATION "${MODULE_INSTALL_LOCATION}")
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/yaml/brace_bottom_setup.yaml" DESTINATION "${MODULE_INSTALL_LOCATION}/yaml")
 
   # Configure the alias accordingly
   configure_file(alias/brace_bottom_setup.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/alias/brace_bottom_setup.yaml")
@@ -41,8 +52,7 @@ if(brace_urdf_FOUND)
   configure_file(yaml/brace_urdf.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/yaml/brace_urdf.yaml")
 
   # Install the YAML file
-  set(MODULE_INSTALL_LOCATION "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/")
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/yaml/brace_urdf.yaml" DESTINATION "${MODULE_INSTALL_LOCATION}")
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/yaml/brace_urdf.yaml" DESTINATION "${MODULE_INSTALL_LOCATION}/yaml")
 
   # Configure the alias accordingly
   configure_file(alias/brace_urdf.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/alias/brace_urdf.yaml")

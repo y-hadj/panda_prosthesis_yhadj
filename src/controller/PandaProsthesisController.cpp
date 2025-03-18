@@ -1,11 +1,20 @@
 #include "PandaProsthesisController.h"
+#include <mc_rbdyn/RobotLoader.h>
 #include "config.h"
 
 namespace panda_prosthetics
 {
 
+static auto patch_rm(mc_rbdyn::RobotModulePtr rm)
+{
+  auto bonetag_femur = mc_rbdyn::RobotLoader::get_robot_module("BoneTag::Femur");
+  *rm = rm->connect(*bonetag_femur, "panda_link8", "base_link", "",
+                    mc_rbdyn::RobotModule::ConnectionParameters{}.name("panda_femur"));
+  return rm;
+}
+
 PandaProsthetics::PandaProsthetics(mc_rbdyn::RobotModulePtr rm, double dt, const mc_rtc::Configuration & config)
-: mc_control::fsm::Controller(rm, dt, config), config_(config)
+: mc_control::fsm::Controller(patch_rm(rm), dt, config), config_(config)
 {
   gui()->addElement(
       {"Frames"}, mc_rtc::gui::Transform("Tibia", [this]() { return robot("panda_tibia").frame("Tibia").position(); }),

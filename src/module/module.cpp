@@ -2,6 +2,7 @@
 
 #include "config.h"
 
+#include <mc_rbdyn/RobotLoader.h>
 #include <RBDyn/parsers/urdf.h>
 
 #include <boost/filesystem.hpp>
