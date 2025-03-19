@@ -1,0 +1,13 @@
+# Location of data files, all path in the YAML file are
+# interpreted relative to this path unless they are absolute paths
+path: "@MODULE_INSTALL_LOCATION@"
+name: BoneTag::Tibia
+urdf_path: urdf/bonetag_tibia.urdf
+fixed: true
+
+convexHulls:
+  support_tibia: [support_tibia, "@MODULE_INSTALL_LOCATION@/convex/support_tibia-ch.txt"]
+  tibia: [tibia, "@MODULE_INSTALL_LOCATION@/convex/tibia-ch.txt"]
+
+# Default orientation (quaternion) and position of the floating base
+default_attitude: [1., 0., 0., 0., 0., 0., 0.]
