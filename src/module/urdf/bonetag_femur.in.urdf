@@ -30,7 +30,7 @@
         </visual>
         <collision>
             <geometry>
-                <mesh filename="@MODULE_INSTALL_LOCATION/meshes/femur.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/femur.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </collision>
     </link>

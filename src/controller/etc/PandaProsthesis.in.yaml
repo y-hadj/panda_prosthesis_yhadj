@@ -49,7 +49,7 @@ robots:
           translation: [0, 0, -0.225]
           rotation: [3.14, 0, 0]
   panda_tibia:
-    module: PandaProsthesis::Tibia
+    module: PandaDefault::BoneTag::Tibia
     frames:
       - name: TibiaCalibration
         parent: panda_link8

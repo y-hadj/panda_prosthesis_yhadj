@@ -8,10 +8,16 @@
 namespace mc_robots
 {
 
-struct ROBOT_MODULE_API PandaProsthesisRobotModule : public mc_robots::PandaRobotModule
+template<typename Callback>
+static void ForAllVariants(Callback cb)
 {
-public:
-  PandaProsthesisRobotModule(const std::string & prosthesis);
-};
+  for(auto & robot : {"PandaDefault"})
+  {
+    for(auto & tool : {"BoneTag::Femur", "BoneTag::Tibia"})
+    {
+      cb(robot, tool);
+    }
+  }
+}
 
 } // namespace mc_robots

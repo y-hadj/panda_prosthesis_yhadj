@@ -1,5 +1,5 @@
 #MainRobot: PandaProsthesis::Femur
-MainRobot: PandaDefault
+MainRobot: PandaDefault::BoneTag::Femur
 Enabled: PandaProsthesis
 Timestep: 0.001
 
