@@ -8,12 +8,12 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="file:///home/vscode/superbuild/install/relwithdebinfo/share/panda_prosthesis/meshes/support_tibia.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="file:///home/vscode/superbuild/install/relwithdebinfo/share/panda_prosthesis/meshes/bonetag_tibia/support_tibia.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
         <collision>
             <geometry>
-                <mesh filename="file:///home/vscode/superbuild/install/relwithdebinfo/share/panda_prosthesis/meshes/support_tibia.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="file:///home/vscode/superbuild/install/relwithdebinfo/share/panda_prosthesis/meshes/bonetag_tibia/support_tibia.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </collision>
     </link>
@@ -25,12 +25,12 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="file:///home/vscode/superbuild/install/relwithdebinfo/share/panda_prosthesis/meshes/tibia.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="file:///home/vscode/superbuild/install/relwithdebinfo/share/panda_prosthesis/meshes/bonetag_tibia/tibia.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
         <collision>
             <geometry>
-                <mesh filename="file:///home/vscode/superbuild/install/relwithdebinfo/share/panda_prosthesis/meshes/tibia.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="file:///home/vscode/superbuild/install/relwithdebinfo/share/panda_prosthesis/meshes/bonetag_tibia/tibia.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </collision>
     </link>

@@ -1,8 +1,9 @@
 # Location of data files, all path in the YAML file are
 # interpreted relative to this path unless they are absolute paths
 path: "@MODULE_INSTALL_LOCATION@"
-name: BoneTag::Femur
+name: bonetag_femur
 urdf_path: urdf/bonetag_femur.urdf
+rsdf_dir: rsdf/bonetag_femur
 fixed: true
 
 convexHulls:

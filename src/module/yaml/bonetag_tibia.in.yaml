@@ -1,8 +1,9 @@
 # Location of data files, all path in the YAML file are
 # interpreted relative to this path unless they are absolute paths
 path: "@MODULE_INSTALL_LOCATION@"
-name: BoneTag::Tibia
+name: bonetag_tibia
 urdf_path: urdf/bonetag_tibia.urdf
+rsdf_dir: rsdf/bonetag_tibia
 fixed: true
 
 convexHulls:
