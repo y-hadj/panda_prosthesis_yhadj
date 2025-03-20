@@ -20,10 +20,12 @@ do
   echo "tmp_dir=$tmp_dir"
   for m in `find $dir -type f -name '*.stl'`
   do
-    qc_out="$tmp_dir/$dir_name/`basename $m '.stl'`.qc"
+    qc_out="$tmp_dir/`basename $m '.stl'`.qc"
+    echo "qc_out=$qc_out"
     ch_out=$this_dir/convex/$dir_name/`basename $m ".stl"`-ch.txt
+    echo "ch_out=$ch_out"
     mesh_sampling $m $qc_out --type xyz --samples 1000 --scale 0.001
     qconvex TI $qc_out TO $ch_out Qt o f
-    rm -f $qc_out
+    # rm -f $qc_out
   done
 done
