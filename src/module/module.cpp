@@ -29,8 +29,14 @@ extern "C"
               auto name = toolModule == "BoneTag::Femur" ? "panda_femur" : "panda_tibia";
               auto robot_rm = *mc_rbdyn::RobotLoader::get_robot_module(robotModule);
               auto femur_rm = *mc_rbdyn::RobotLoader::get_robot_module(toolModule);
-              return new mc_rbdyn::RobotModule(robot_rm.connect(
+              auto connect_rm = new mc_rbdyn::RobotModule(robot_rm.connect(
                   femur_rm, "panda_link8", "base_link", "", mc_rbdyn::RobotModule::ConnectionParameters{}.name(name)));
+              // XXX: This is done to ensure that the canonical module // XXX: This is done to ensure that the canonical
+              // module is exactly the same as this module However:
+              // - It will generate a full temporary connected module when used (/tmp/...)
+              // - It should be gracefully handled by mc_rtc (simply copy the existing module)
+              connect_rm->_canonicalParameters = {variant_name};
+              return connect_rm;
             };
           });
       return variant_factory;
