@@ -90,13 +90,13 @@ ManipulateKnee::Rotation:
   TibiaTask:
     type: transform
     dimWeight: [100, 100, 100, 1000, 1000, 1000]
-    stiffness: [10, 10, 10, 100, 100, 100]
+    stiffness: [100, 100, 100, 1000, 1000, 1000]
     robot: panda_tibia
     frame: Tibia
   FemurTask:
     type: transform
     dimWeight: [100, 100, 100, 1000, 1000, 1000]
-    stiffness: [10, 10, 10, 100, 100, 100]
+    stiffness: [100, 100, 100, 1000, 1000, 1000]
     robot: panda_femur
     frame: Femur
   femur:

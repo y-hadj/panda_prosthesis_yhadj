@@ -154,6 +154,10 @@ bool Initial::run(mc_control::fsm::Controller & ctl)
     ctl.realRobot(robot_).posW(initial_pose_);
   }
 
+  if(!load_)
+  {
+    return true;
+  }
   if(load_)
   {
     if(t_ >= duration_)

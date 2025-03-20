@@ -15,7 +15,7 @@ PandaProsthetics::PandaProsthetics(mc_rbdyn::RobotModulePtr rm, double dt, const
                              [this]() { return robot("panda_tibia").frame("TibiaCalibration").position(); }),
       mc_rtc::gui::Transform("FemurCalibration",
                              [this]() { return robot("panda_femur").frame("FemurCalibration").position(); }));
-  datastore().make<std::string>("ControllerName", "bonetag");
+  datastore().make<std::string>("ControllerName", config_("ControllerName", std::string{"bonetag"}));
 }
 
 bool PandaProsthetics::run()

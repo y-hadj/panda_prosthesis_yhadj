@@ -29,9 +29,9 @@ extern "C"
               auto name = robot.name + "_" + tool.name;
               auto robot_rm = *mc_rbdyn::RobotLoader::get_robot_module(robot.module);
               auto femur_rm = *mc_rbdyn::RobotLoader::get_robot_module(tool.module);
-              auto connect_rm =
-                  new mc_rbdyn::RobotModule(robot_rm.connect(femur_rm, robot.connection_link, tool.connection_link, "",
-                                                             mc_rbdyn::RobotModule::ConnectionParameters{}.name(name)));
+              auto connect_rm = new mc_rbdyn::RobotModule(robot_rm.connect(
+                  femur_rm, robot.connection_link, tool.connection_link, "",
+                  mc_rbdyn::RobotModule::ConnectionParameters{}.name(name).X_other_connection(sva::RotZ(tool.rotate))));
               return connect_rm;
             };
           });
