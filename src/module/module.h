@@ -3,19 +3,33 @@
 #include <mc_rbdyn/RobotModuleMacros.h>
 #include <mc_robots/api.h>
 
-#include <mc_panda/panda.h>
-
 namespace mc_robots
 {
+
+struct ConnectRobot
+{
+  std::string module;
+  std::string name;
+  std::string connection_link;
+};
+
+struct ConnectTool
+{
+  std::string module;
+  std::string name;
+  std::string connection_link;
+};
 
 template<typename Callback>
 static void ForAllVariants(Callback cb)
 {
-  for(auto & robot : {"PandaDefault"})
+  for(auto & robot :
+      std::vector<ConnectRobot>{{"PandaDefault", "panda", "panda_link8"}, {"UR10", "panda", "wrist_3_link"}})
   {
-    for(auto & tool : {"BoneTag::Femur", "BoneTag::Tibia"})
+    for(auto & tool : std::vector<ConnectTool>{{"BoneTag::Femur", "femur", "femur_base_link"},
+                                               {"BoneTag::Tibia", "tibia", "tibia_base_link"}})
     {
-      cb(robot, tool);
+      cb("PandaProsthesis", robot, tool);
     }
   }
 }

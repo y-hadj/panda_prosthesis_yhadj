@@ -6,8 +6,8 @@ extern "C"
 {
   ROBOT_MODULE_API void MC_RTC_ROBOT_MODULE(std::vector<std::string> & names)
   {
-    mc_robots::ForAllVariants([&names](const std::string & robotModule, const std::string & toolModule)
-                              { names.push_back(robotModule + "::" + toolModule); });
+    mc_robots::ForAllVariants([&names](const std::string & prefix, const auto & robot, const auto & tool)
+                              { names.push_back(prefix + "::" + robot.module + "::" + tool.module); });
   }
   ROBOT_MODULE_API void destroy(mc_rbdyn::RobotModule * ptr)
   {
@@ -21,16 +21,17 @@ extern "C"
       std::map<std::string, std::function<mc_rbdyn::RobotModule *()>> variant_factory;
       using namespace mc_robots;
       ForAllVariants(
-          [&variant_factory](const std::string & robotModule, const std::string & toolModule)
+          [&variant_factory](const std::string & prefix, const auto & robot, const auto & tool)
           {
-            auto variant_name = robotModule + "::" + toolModule;
+            auto variant_name = prefix + "::" + robot.module + "::" + tool.module;
             variant_factory[variant_name] = [=]()
             {
-              auto name = toolModule == "BoneTag::Femur" ? "panda_femur" : "panda_tibia";
-              auto robot_rm = *mc_rbdyn::RobotLoader::get_robot_module(robotModule);
-              auto femur_rm = *mc_rbdyn::RobotLoader::get_robot_module(toolModule);
-              auto connect_rm = new mc_rbdyn::RobotModule(robot_rm.connect(
-                  femur_rm, "panda_link8", "base_link", "", mc_rbdyn::RobotModule::ConnectionParameters{}.name(name)));
+              auto name = robot.name + "_" + tool.name;
+              auto robot_rm = *mc_rbdyn::RobotLoader::get_robot_module(robot.module);
+              auto femur_rm = *mc_rbdyn::RobotLoader::get_robot_module(tool.module);
+              auto connect_rm =
+                  new mc_rbdyn::RobotModule(robot_rm.connect(femur_rm, robot.connection_link, tool.connection_link, "",
+                                                             mc_rbdyn::RobotModule::ConnectionParameters{}.name(name)));
               return connect_rm;
             };
           });

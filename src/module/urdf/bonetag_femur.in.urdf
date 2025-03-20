@@ -1,5 +1,5 @@
 <robot name="bonetag_femur">
-    <link name="base_link" />
+    <link name="femur_base_link" />
     <link name="support_femur">
         <inertial>
             <origin xyz="0 0 0.09"/>
@@ -35,7 +35,7 @@
         </collision>
     </link>
     <joint name="ee_to_support" type="fixed">
-        <parent link="base_link"/>
+        <parent link="femur_base_link"/>
         <child link="support_femur"/>
         <origin rpy="0.00159265 3.14159 0.00159265"/>
     </joint>
