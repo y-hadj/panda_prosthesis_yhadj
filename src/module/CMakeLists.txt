@@ -1,4 +1,4 @@
-set(MODULE_INSTALL_LOCATION "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/")
+set(MODULE_INSTALL_LOCATION "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}")
 
 configure_file(config.h.in "${CMAKE_CURRENT_BINARY_DIR}/include/config.h")
 
