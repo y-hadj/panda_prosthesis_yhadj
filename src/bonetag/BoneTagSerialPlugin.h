@@ -5,6 +5,7 @@
 #pragma once
 
 #include <mc_control/GlobalPlugin.h>
+#include <mc_rtc/gui/StateBuilder.h>
 #include "BoneTagSerial.h"
 #include <mutex>
 #include <thread>
@@ -29,6 +30,7 @@ struct BoneTagSerialPlugin : public mc_control::GlobalPlugin
   // Thread functions
 protected:
   void connect();
+  void addPlot(mc_rtc::gui::StateBuilder & gui);
 
 protected:
   std::string descriptor_;
