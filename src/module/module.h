@@ -27,7 +27,7 @@ static void ForAllVariants(Callback cb)
   for(auto & robot :
       std::vector<ConnectRobot>{{"PandaDefault", "panda", "panda_link8"}, {"UR10", "panda", "wrist_3_link"}})
   {
-    for(auto & tool : std::vector<ConnectTool>{{"BoneTag::Femur", "femur", "femur_base_link", mc_rtc::constants::PI},
+    for(auto & tool : std::vector<ConnectTool>{{"BoneTag::Femur", "femur", "femur_base_link"},
                                                {"BoneTag::Tibia", "tibia", "tibia_base_link"}})
     {
       cb("PandaProsthesis", robot, tool);
