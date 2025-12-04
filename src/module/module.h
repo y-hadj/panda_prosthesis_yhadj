@@ -24,13 +24,16 @@ struct ConnectTool
 template<typename Callback>
 static void ForAllVariants(Callback cb)
 {
-  for(auto & robot :
-      std::vector<ConnectRobot>{{"PandaDefault", "panda", "panda_link8"}, {"UR10", "panda", "wrist_3_link"}})
+  cb(ConnectRobot{"Panda2LIRMMDefault", "panda", "panda_link8"},
+     ConnectTool{"BoneTag::Femur", "femur", "femur_base_link"});
+  cb(ConnectRobot{"Panda7LIRMMDefault", "panda", "panda_link8"},
+     ConnectTool{"BoneTag::Tibia", "tibia", "tibia_base_link"});
+  for(auto & robot : std::vector<ConnectRobot>{{"UR10", "panda", "wrist_3_link"}})
   {
     for(auto & tool : std::vector<ConnectTool>{{"BoneTag::Femur", "femur", "femur_base_link"},
                                                {"BoneTag::Tibia", "tibia", "tibia_base_link"}})
     {
-      cb("PandaProsthesis", robot, tool);
+      cb(robot, tool);
     }
   }
 }

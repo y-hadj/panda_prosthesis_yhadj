@@ -18,8 +18,8 @@ StatesFiles:
 VerboseStateFactory: false
 
 # TODO: Change this when changing robot
-ControllerName: bonetag_ur10
-# ControllerName: bonetag_panda
+# ControllerName: bonetag_ur10
+ControllerName: bonetag_panda
 
 TrajectoryLoaders:
   BoneTag:
@@ -53,13 +53,13 @@ robots:
           translation: [0, 0, -0.225]
           rotation: [3.14, 0, 0]
   panda_tibia:
-    module: PandaProsthesis::PandaDefault::BoneTag::Tibia
-    # module: PandaProsthesis::UR10::BoneTag::Tibia
+    module: Panda7LIRMMDefault::BoneTag::Tibia
+    # module: UR10::BoneTag::Tibia
     frames:
       - name: TibiaCalibration
         parent: tibia_base_link
         X_p_f:
-          translation: [0, 0.095, 0.225] # assuming 2cm height for the calibration tool
+          translation: [0.0, 0.095, 0.225] # assuming 2cm height for the calibration tool
           rotation: [1.57, 0, 0]
       # Frame above the surface of the Tibia
       # This should contain the desired offset distance between the tibia and the joint center

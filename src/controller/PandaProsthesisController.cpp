@@ -1,6 +1,5 @@
 #include "PandaProsthesisController.h"
 #include <mc_rbdyn/RobotLoader.h>
-#include "config.h"
 
 namespace panda_prosthetics
 {
