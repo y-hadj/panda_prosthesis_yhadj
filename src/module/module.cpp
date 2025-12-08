@@ -33,6 +33,14 @@ extern "C"
                   femur_rm, robot.connection_link, tool.connection_link, "",
                   mc_rbdyn::RobotModule::ConnectionParameters{}.name(name).X_other_connection(sva::RotZ(tool.rotate))));
               connect_rm->name = name;
+
+              const double i = 0.01;
+              const double s = 0.005;
+              const double d = 0.;
+              auto & c = connect_rm->_minimalSelfCollisions;
+              c.push_back({tool.name, "robot_support", i, s, d});
+              c.push_back({"support_" + tool.name, "robot_support", i, s, d});
+
               return connect_rm;
             };
           });

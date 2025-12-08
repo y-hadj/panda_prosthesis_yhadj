@@ -79,7 +79,12 @@ constraints:
 # Collision constraint
 collisions:
 - type: collision
-  robot: panda_tibia
+  r1: panda_tibia
+  r2: panda_tibia
+  useMinimal: true
+- type: collision
+  r1: panda_femur
+  r2: panda_femur
   useMinimal: true
 
 ObserverPipelines:

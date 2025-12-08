@@ -122,7 +122,7 @@ void Initial::start(mc_control::fsm::Controller & ctl)
   else
   { // Allow to manually define it
     ctl.gui()->addElement(
-        this, category_,
+        this, {},
         mc_rtc::gui::Label("Instructions",
                            [this]() -> std::string
                            {
