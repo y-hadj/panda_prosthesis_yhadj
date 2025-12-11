@@ -91,7 +91,7 @@ std::string Result::to_csv() const
                  tibiaTranslation.z(),
              },
              ",")
-         + "," + mc_rtc::io::to_string(sensorData);
+         + "," + mc_rtc::io::to_string(sensorData, ",");
 }
 
 void ResultHandler::write_csv(const std::string & path)
@@ -104,9 +104,16 @@ void ResultHandler::write_csv(const std::string & path)
     mc_rtc::log::error("Failed to write results to CSV file {}", path);
   }
 
-  csv << "femur_tangage,femur_roulis,femur_lacet,tibia_tangage,tibia_roulis,tibia_lacet,femur_x,femur_y,femur_z,tibia_"
-         "x,tibia_y,tibia_z,sensor_0,sensor_1,sensor_2"
-      << std::endl;
+  csv << "femur_tangage,femur_roulis,femur_lacet,"
+         "tibia_tangage,tibia_roulis,tibia_lacet,"
+         "femur_x,femur_y,femur_z,"
+         "tibia_x,tibia_y,tibia_z";
+
+  for(size_t i = 0; i < results_.front().sensorData.size(); ++i)
+  {
+    csv << ",sensor_" << i;
+  }
+  csv << std::endl;
 
   for(const auto & result : results_)
   {
@@ -306,6 +313,34 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
                                               file_.load(trajectory_dir_ + "/" + trajectory_file_);
                                               play();
                                             }));
+
+ctl.gui()->addElement(this, {"ManipulateKnee"}, mc_rtc::gui::ElementsStacking::Horizontal,
+    mc_rtc::gui::Checkbox(
+        "Manual Logging",
+        [this]() { return manualLogging_; },
+        [this]() {}
+    ),
+    mc_rtc::gui::Button("Start Logging",
+        [this]()
+        {
+          mc_rtc::log::info("Start manual logging");
+          manualLogging_ = true;
+        }),
+    mc_rtc::gui::Button("Stop & Save",
+        [this]()
+        {
+          mc_rtc::log::info("Saving manual logging results");
+          saveResults();
+        }
+    ),
+    mc_rtc::gui::Button("Clear Results",
+        [this]()
+        {
+            results_.clear();
+        }
+    )
+);
+
 
   ctl.gui()->addElement(
       this, {"ManipulateKnee", "Trajectory"},
@@ -560,6 +595,11 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
                 femurTranslationActual_, femurRotationActual_);
   handle_motion(ctl.robot("panda_tibia"), tibiaError_, *tibia_task_, X_0_tibiaAxis, tibiaTranslation_, tibiaRotation_,
                 tibiaTranslationActual_, tibiaRotationActual_);
+
+  if(manualLogging_)
+  {
+    measure(ctl);
+  }
 
   ++iter_;
   return output().size() != 0;

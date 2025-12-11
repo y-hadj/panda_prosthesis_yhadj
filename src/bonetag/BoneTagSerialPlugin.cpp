@@ -122,7 +122,7 @@ void BoneTagSerialPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc
   }
 
   gc.controller().gui()->addElement(
-      {"BoneTagSerialPlugin"}, mc_rtc::gui::Label("Connected", [this]() { return serial_->connected(); }),
+      {"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::Label("Connected", [this]() { return serial_->connected(); }),
       mc_rtc::gui::Button("Connect", [this]() { connect_requested_ = true; }),
       mc_rtc::gui::ArrayLabel("Data", label,
                               [this]()
@@ -143,14 +143,6 @@ void BoneTagSerialPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc
 
 void BoneTagSerialPlugin::reset(mc_control::MCGlobalController & controller) {}
 
-template<unsigned N, typename F>
-auto make_plots_tuple(F && make_plot)
-{
-  // Helper to build a tuple of plots
-  return [&]<std::size_t... Is>(std::index_sequence<Is...>)
-  { return std::make_tuple(make_plot(Is)...); }(std::make_index_sequence<N>{});
-}
-
 void BoneTagSerialPlugin::before(mc_control::MCGlobalController & gc)
 {
   std::lock_guard<std::mutex> lockReceivedDataMutex(serial_->received_data_mutex);
@@ -162,6 +154,7 @@ void BoneTagSerialPlugin::before(mc_control::MCGlobalController & gc)
   if(hasReceivedData_)
   {
     lastData_ = lastReceivedData;
+    lastDataIsNew_ = true;
 
     if(!plotDisplayed)
     {
@@ -195,28 +188,53 @@ void BoneTagSerialPlugin::before(mc_control::MCGlobalController & gc)
       {
         const auto & colorStyle = sensorColors[index % sensorColors.size()];
         return mc_rtc::gui::plot::Y(
-            fmt::format("Sensor {}", index + 1), [this, index]() { return lastData_[index]; }, colorStyle.first,
+            fmt::format("Sensor {}", index), [this, index]() { return lastData_[index]; }, colorStyle.first,
             colorStyle.second);
       };
 
-      // Usage:
-      // auto plots_tuple = make_plots_tuple<23>(make_sensor_plot);
-      //
-      // std::apply(
-      //     [&](auto &&... plot_args)
-      //     {
-      //       gc.controller().gui()->addPlot("BoneTag Measurements", mc_rtc::gui::plot::X("N", [this]() { return t_;
-      //       }),
-      //                                      plot_args...);
-      //     },
-      //     plots_tuple);
-
       auto & gui = *gc.controller().gui();
-      gui.addPlot("BoneTag Measurements", mc_rtc::gui::plot::X("t", [this]() { return t_; }));
+      // Add buttons to add/remove the "BoneTag Measurements" plot
+      gui.addElement({"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::ElementsStacking::Horizontal,
+        mc_rtc::gui::Button(
+          "Add BoneTag Measurements Plot",
+          [this, &gui, make_sensor_plot]()
+          {
+            gui.addPlot("BoneTag Measurements", mc_rtc::gui::plot::X("t", [this]() { return t_; }));
+            for(unsigned i = 0; i < serial_->SENSOR_COUNT; ++i)
+            {
+              gui.addPlotData("BoneTag Measurements", make_sensor_plot(i));
+            }
+          }
+        ),
+        mc_rtc::gui::Button(
+          "Remove BoneTag Measurements Plot",
+          [this, &gui]()
+          {
+            gui.removePlot("BoneTag Measurements");
+          }
+        )
+      );
 
       for(unsigned i = 0; i < serial_->SENSOR_COUNT; ++i)
       {
-        gui.addPlotData("BoneTag Measurements", make_sensor_plot(i));
+        gui.addElement({"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::ElementsStacking::Horizontal,
+            mc_rtc::gui::Button(
+                fmt::format("Add Sensor {}", i),
+                [this, &gui, make_sensor_plot, i]()
+                {
+                  gui.addPlot(fmt::format("BoneTag Measurements / Sensor {}", i),
+                              mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+                              make_sensor_plot(i));
+                }
+            ),
+          mc_rtc::gui::Button(
+              fmt::format("Remove Sensor {}", i),
+              [this, &gui, i]()
+              {
+                gui.removePlot(fmt::format("BoneTag Measurements / Sensor {}", i));
+              }
+          )
+        );
       }
 
       std::vector<double> data;

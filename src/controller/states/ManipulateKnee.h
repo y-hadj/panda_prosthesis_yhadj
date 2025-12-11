@@ -89,7 +89,7 @@ protected:
     trajOffsets_.reset();
   }
 
-  void saveResults()
+  void saveResults(bool clear = true)
   {
     results_.write_csv(resultPath_);
     results_.clear();
@@ -137,6 +137,7 @@ protected:
   std::string trajectory_file_ = "";
 
   bool play_ = false;
+  bool manualLogging_ = false;
   bool next_ = true;
   size_t iter_ = 0;
   size_t iterRate_ = 1;
