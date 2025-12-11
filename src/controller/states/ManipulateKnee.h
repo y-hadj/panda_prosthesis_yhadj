@@ -4,7 +4,8 @@
 #include <mc_control/fsm/State.h>
 #include <mc_tasks/TransformTask.h>
 #include <mc_trajectory/SequenceInterpolator.h>
-#include "../../bonetag/BoneTagSerial.h"
+// #include "../../bonetag/BoneTagSerial.h"
+#include "../../bonetag/Serial.h"
 #include <deque>
 
 struct ReadCSV
@@ -35,7 +36,7 @@ struct Result
   Eigen::Vector3d tibiaTranslation;
 
   // Sensor measurements
-  io::BoneTagSerial::Data sensorData;
+  io::Serial::Data sensorData;
 
   std::string to_csv() const;
 };

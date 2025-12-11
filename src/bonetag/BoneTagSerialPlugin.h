@@ -6,7 +6,9 @@
 
 #include <mc_control/GlobalPlugin.h>
 #include <mc_rtc/gui/StateBuilder.h>
-#include "BoneTagSerial.h"
+// #include "BoneTagSerial.h"
+#include "ProtoTMRSerial.h"
+#include <memory>
 #include <mutex>
 #include <termios.h>
 #include <thread>
@@ -26,6 +28,7 @@ struct BoneTagSerialPlugin : public mc_control::GlobalPlugin
 
   mc_control::GlobalPlugin::GlobalPluginConfiguration configuration() override;
 
+  BoneTagSerialPlugin();
   ~BoneTagSerialPlugin() override;
 
   // Thread functions
@@ -38,12 +41,12 @@ protected:
   std::string serial_port_name;
 
   bool connect_requested_ = false;
-  io::BoneTagSerial serial_;
+  std::unique_ptr<io::Serial> serial_;
   std::thread thread_;
   std::mutex dataMutex_;
 
-  io::BoneTagSerial::Data data_;
-  io::BoneTagSerial::Data lastData_;
+  io::Serial::Data data_;
+  io::Serial::Data lastData_;
   double t_ = 0;
   bool plotDisplayed = false;
 

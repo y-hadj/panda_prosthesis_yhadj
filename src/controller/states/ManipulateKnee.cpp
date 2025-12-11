@@ -460,7 +460,7 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
     return false;
   }
 
-  auto sensorData = ctl.datastore().call<std::optional<io::BoneTagSerial::Data>>("BoneTagSerialPlugin::GetNewData");
+  auto sensorData = ctl.datastore().call<std::optional<io::Serial::Data>>("BoneTagSerialPlugin::GetNewData");
   if(sensorData)
   {
     // mc_rtc::log::info("Got new data");
