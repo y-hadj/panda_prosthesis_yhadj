@@ -19,6 +19,7 @@ install(TARGETS PandaProsthesisCommon
 add_controller(PandaProsthesisController PandaProsthesisController.cpp PandaProsthesisController.h)
 target_link_libraries(PandaProsthesisController PUBLIC PandaProsthesisCommon)
 target_link_libraries(PandaProsthesisController PUBLIC mc_rtc::mc_control_fsm)
+target_link_libraries(PandaProsthesisController PUBLIC mc_panda::devices)
 target_include_directories(PandaProsthesisController PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/../module/include>)
 
 set(TRAJECTORY_DIR "${PROJECT_SOURCE_DIR}/data/trajectories")

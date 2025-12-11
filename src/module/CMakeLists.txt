@@ -18,6 +18,7 @@ macro(add_yaml_module NAME)
   )
 endmacro()
 add_yaml_module(bonetag_tibia)
+add_yaml_module(bonetag_tibia_calibration_tool)
 add_yaml_module(bonetag_femur)
 
 

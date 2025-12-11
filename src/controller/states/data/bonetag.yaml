@@ -24,6 +24,7 @@ InitializeRobots:
       category: []
       choices:
         - ["Calibrate", "Calibrate"]
+        - ["Calibrate With Tool", "CalibrateWithTool"]
         - ["Skip Calibration", "SkipCalibration"]
 
 InitializeRobots::Load:
@@ -33,6 +34,53 @@ InitializeRobots::Load:
       load: true
     InitializePandaTibia:
       load: true
+
+InitializeRobots::NoLoad:
+  base: InitializeRobots
+  configs:
+    InitializePandaFemur:
+      load: false
+    InitializePandaTibia:
+      load: false
+
+
+ChangeTool:
+  base: Choice
+  category: []
+  choices:
+    - ["Tool Changed", "ToolChanged"]
+  constraints:
+    MoveFemurUpConstraint:
+      type: boundedSpeed
+      robot: panda_femur
+      constraints:
+        - frame: Femur
+          dof: [ 1.0, 1.0, 1.0, 1.0, 1.0, 0.0 ]
+          lowerSpeed: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+          upperSpeed: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.1 ]
+    MoveTibiaDownConstraint:
+      type: boundedSpeed
+      robot: panda_tibia
+      constraints:
+        - frame: Tibia
+          dof: [ 1.0, 1.0, 1.0, 1.0, 1.0, 0.0 ]
+          lowerSpeed: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+          upperSpeed: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.1 ]
+  tasks:
+    MoveFemurUp:
+      type: transform
+      robot: panda_femur
+      frame: Femur
+      stiffness: 5
+      move:
+        translation: [0, 0, -0.05]
+    MoveTibiaDown:
+      type: transform
+      robot: panda_tibia
+      frame: Tibia
+      stiffness: 5
+      move:
+        translation: [0, 0, 0.05]
   AddCollisions: &collisions_panda_femur_tibia
     - r1: panda_femur
       r2: panda_tibia
@@ -82,53 +130,6 @@ InitializeRobots::Load:
         - body1: convex_panda_link7
           body2: robot_support
 
-InitializeRobots::NoLoad:
-  base: InitializeRobots
-  configs:
-    InitializePandaFemur:
-      load: false
-    InitializePandaTibia:
-      load: false
-
-
-ChangeTool:
-  base: Choice
-  category: []
-  choices:
-    - ["Tool Changed", "ToolChanged"]
-  constraints:
-    MoveFemurUpConstraint:
-      type: boundedSpeed
-      robot: panda_femur
-      constraints:
-        - frame: Femur
-          dof: [ 1.0, 1.0, 1.0, 1.0, 1.0, 0.0 ]
-          lowerSpeed: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
-          upperSpeed: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.1 ]
-    MoveTibiaDownConstraint:
-      type: boundedSpeed
-      robot: panda_tibia
-      constraints:
-        - frame: Tibia
-          dof: [ 1.0, 1.0, 1.0, 1.0, 1.0, 0.0 ]
-          lowerSpeed: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
-          upperSpeed: [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.1 ]
-  tasks:
-    MoveFemurUp:
-      type: transform
-      robot: panda_femur
-      frame: Femur
-      stiffness: 5
-      move:
-        translation: [0, 0, -0.05]
-    MoveTibiaDown:
-      type: transform
-      robot: panda_tibia
-      frame: Tibia
-      stiffness: 5
-      move:
-        translation: [0, 0, 0.05]
-
 ManipulateKnee::Rotation:
   base: ManipulateKnee
   samples: 15
@@ -159,15 +160,43 @@ ManipulateKnee::Rotation:
     minTranslation: [-30, -50, -10]
     maxTranslation: [30, 50, 50]
 
+ConnectCalibrationTool:
+  base: ConnectRobots
+  connect: true
+  robot: "panda_tibia"
+  connectModule: "BoneTag::Tibia::CalibrationTool"
+  fromLink: "tibia"
+  toLink: "bonetag_tibia_calibration_tool"
+  X_connect:
+    translation: [0., 0., 0]
+    rotation: [0, 0, 0]
+
+
+DisconnectCalibrationTool:
+  base: ConnectRobots
+  connect: false
+
+CalibrateWithTool:
+  base: Meta
+  transitions:
+  - [ConnectCalibrationTool, OK, Calibrate, Strict]
+  - [Calibrate, OK, ChangeTool, Strict]
+  - [ChangeTool, ToolChanged, DisconnectCalibrationTool, Strict]
+
 Simulation:
   base: Meta
   transitions:
   - [InitialChoice, LoadSavedCalibration, InitializeRobots::Load, Auto]
   - [InitialChoice, StartFromCurrent, InitializeRobots::NoLoad, Auto]
   - [InitializeRobots::Load, Calibrate, Calibrate, Auto]
+  - [InitializeRobots::Load, CalibrateWithTool, CalibrateWithTool, Auto]
   - [InitializeRobots::Load, SkipCalibration, ManipulateKnee::Rotation, Auto]
   - [InitializeRobots::NoLoad, Calibrate, Calibrate, Auto]
+  - [InitializeRobots::NoLoad, CalibrateWithTool, CalibrateWithTool, Auto]
+
   - [Calibrate, OK, ChangeTool, Auto]
+  - [CalibrateWithTool, OK, InitializeRobots::Load, Auto]
+
   - [ChangeTool, ToolChanged, InitializeRobots::Load, Auto]
 
 

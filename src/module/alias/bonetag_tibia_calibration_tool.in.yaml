@@ -1,0 +1,1 @@
+BoneTag::Tibia::CalibrationTool: [json, "@MODULE_INSTALL_LOCATION@/yaml/bonetag_tibia_calibration_tool.yaml"]

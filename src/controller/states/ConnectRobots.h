@@ -2,7 +2,7 @@
 
 #include <mc_control/fsm/State.h>
 
-struct Choice : mc_control::fsm::State
+struct ConnectRobots : mc_control::fsm::State
 {
   void start(mc_control::fsm::Controller & ctl) override;
 

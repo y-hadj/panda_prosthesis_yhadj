@@ -1,0 +1,13 @@
+# Location of data files, all path in the YAML file are
+# interpreted relative to this path unless they are absolute paths
+path: "@MODULE_INSTALL_LOCATION@"
+name: bonetag_tibia_calibration_tool
+urdf_path: urdf/bonetag_tibia_calibration_tool.urdf
+rsdf_dir: rsdf/bonetag_tibia_calibration_tool
+fixed: true
+
+# convexHulls:
+#   calibration_tool: [calibration_tool, "@MODULE_INSTALL_LOCATION@/convex/bonetag_tibia/bonetag_tibia_calibration_tool-ch.txt"]
+
+# Default orientation (quaternion) and position of the floating base
+default_attitude: [1., 0., 0., 0., 0., 0., 0.]
