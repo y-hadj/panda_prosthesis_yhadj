@@ -13,6 +13,8 @@ struct ReadCSV
   void clear();
   void load(const std::string & path);
 
+  void generateFromConfiguration(const mc_rtc::Configuration & config);
+
   std::deque<Eigen::Vector3d> femurTranslationVector;
   std::deque<Eigen::Vector3d> femurRotationVector;
   std::deque<Eigen::Vector3d> tibiaTranslationVector;

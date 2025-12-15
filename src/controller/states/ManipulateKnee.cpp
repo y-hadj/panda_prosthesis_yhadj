@@ -7,6 +7,7 @@
 #include <mc_tasks/MetaTaskLoader.h>
 #include <boost/filesystem.hpp>
 #include <3rd-party/csv.h>
+#include <mc_trajectory/LinearInterpolation.h>
 
 namespace fs = boost::filesystem;
 
@@ -70,6 +71,52 @@ void ReadCSV::load(const std::string & path)
     tibiaTranslationVector.push_back(tibiaTranslation);
     femurRotationVector.push_back(femurRotation);
     tibiaRotationVector.push_back(tibiaRotation);
+  }
+}
+
+
+void ReadCSV::generateFromConfiguration(const mc_rtc::Configuration & config)
+{
+  int waypoints = config("Waypoints");
+
+  Eigen::Vector3d minTibiaRot = config("MinTibiaRotation");
+  Eigen::Vector3d maxTibiaRot = config("MaxTibiaRotation");
+  Eigen::Vector3d minFemurRot = config("MinFemurRotation");
+  Eigen::Vector3d maxFemurRot = config("MaxFemurRotation");
+  Eigen::Vector3d minTibiaTrans = config("MinTibiaTranslation");
+  Eigen::Vector3d maxTibiaTrans = config("MaxTibiaTranslation");
+  Eigen::Vector3d minFemurTrans = config("minFemurTranslation");
+  Eigen::Vector3d maxFemurTrans = config("maxFemurTranslation");
+
+  mc_trajectory::LinearInterpolation<Eigen::Vector3d> interp;
+
+  femurTranslationVector.clear();
+  tibiaTranslationVector.clear();
+  femurRotationVector.clear();
+  tibiaRotationVector.clear();
+
+  // Split waypoints between the two segments
+  int n1 = waypoints / 2; // zero to min
+  int n2 = waypoints - n1; // min to max
+
+  // Interpolate from zero to min
+  for(int i = 0; i < n1; ++i)
+  {
+    double t = n1 == 1 ? 0.0 : static_cast<double>(i) / (n1 - 1);
+    femurRotationVector.push_back(interp(Eigen::Vector3d::Zero(), minFemurRot, t));
+    tibiaRotationVector.push_back(interp(Eigen::Vector3d::Zero(), minTibiaRot, t));
+    femurTranslationVector.push_back(interp(Eigen::Vector3d::Zero(), minFemurTrans, t));
+    tibiaTranslationVector.push_back(interp(Eigen::Vector3d::Zero(), minTibiaTrans, t));
+  }
+
+  // Interpolate from min to max
+  for(int i = 0; i < n2; ++i)
+  {
+    double t = n2 == 1 ? 0.0 : static_cast<double>(i) / (n2 - 1);
+    femurRotationVector.push_back(interp(minFemurRot, maxFemurRot, t));
+    tibiaRotationVector.push_back(interp(minTibiaRot, maxTibiaRot, t));
+    femurTranslationVector.push_back(interp(minFemurTrans, maxFemurTrans, t));
+    tibiaTranslationVector.push_back(interp(minTibiaTrans, maxTibiaTrans, t));
   }
 }
 
@@ -345,9 +392,48 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
                                             [this]()
                                             {
                                               stop();
-                                              file_.load(trajectory_dir_ + "/" + trajectory_file_);
+                                              if(trajectory_file_ != "custom.csv")
+                                              {
+                                                file_.load(trajectory_dir_ + "/" + trajectory_file_);
+                                              }
                                               play();
                                             }));
+  ctl.gui()->addElement(this, {"ManipulateKnee", "Trajectory", "Generate"},
+      mc_rtc::gui::Form("Generate trajectory",
+       [this](const mc_rtc::Configuration & data)
+       {
+        mc_rtc::log::info("Generating trajectory\n{}", data.dump(true, true));
+        trajectory_file_ = "custom.csv";
+        file_.generateFromConfiguration(data);
+       },
+       mc_rtc::gui::FormIntegerInput("Waypoints", true, 50),
+       mc_rtc::gui::FormArrayInput("MinTibiaRotation",
+         false,
+         minTibiaRotation_),
+       mc_rtc::gui::FormArrayInput("MaxTibiaRotation",
+         false,
+         maxTibiaRotation_),
+       mc_rtc::gui::FormArrayInput("MinFemurRotation",
+         false,
+         minFemurRotation_),
+       mc_rtc::gui::FormArrayInput("MaxFemurRotation",
+         false,
+         maxFemurRotation_),
+       mc_rtc::gui::FormArrayInput("MinTibiaTranslation",
+         false,
+         minTibiaTranslation_),
+       mc_rtc::gui::FormArrayInput("MaxTibiaTranslation",
+         false,
+         maxTibiaTranslation_),
+       mc_rtc::gui::FormArrayInput("minFemurTranslation",
+         false,
+         minFemurTranslation_),
+       mc_rtc::gui::FormArrayInput("maxFemurTranslation",
+         false,
+         maxFemurTranslation_))
+           );
+
+
 
   ctl.gui()->addElement(this, {"ManipulateKnee"}, mc_rtc::gui::ElementsStacking::Horizontal,
                         mc_rtc::gui::Checkbox(
