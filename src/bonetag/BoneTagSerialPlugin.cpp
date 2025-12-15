@@ -1,7 +1,9 @@
 #include "BoneTagSerialPlugin.h"
+// #include "BoneTagSerial.h"
 #include "ProtoTMRSerial.h"
 
 #include <mc_control/GlobalPluginMacros.h>
+#include <mc_rtc/logging.h>
 #include <optional>
 
 namespace mc_plugin
@@ -9,83 +11,43 @@ namespace mc_plugin
 
 constexpr auto DEFAULT_RATE = 200; // [Hz]
 
-BoneTagSerialPlugin::BoneTagSerialPlugin()
-{
-  serial_.reset(new io::ProtoTMRSerial{});
-}
+BoneTagSerialPlugin::BoneTagSerialPlugin() {}
 
-BoneTagSerialPlugin::~BoneTagSerialPlugin()
-{
-  mc_rtc::log::info("[BoneTagSerialPlugin] Stopping communication thread");
-  running_ = false;
-  thread_.join();
-  mc_rtc::log::info("[BoneTagSerialPlugin] Communication thread stopped");
-}
+BoneTagSerialPlugin::~BoneTagSerialPlugin() {}
 
-void BoneTagSerialPlugin::connect()
-{
-  serial_->close_serial_port();
-  try
-  {
-    serial_->open_serial_port(serial_port_name, serial_port_baud_rate);
-    mc_rtc::log::success("[BoneTagSerialPlugin] Communication with device {} opened", serial_port_name);
-  }
-  catch(std::runtime_error & e)
-  {
-    mc_rtc::log::warning(e.what());
-  }
-}
+void BoneTagSerialPlugin::connect() {}
 
-void BoneTagSerialPlugin::connectAndStartReading()
-{
-  connect();
-  try
-  {
-    mc_rtc::log::success("[BoneTagSerialPlugin] Starting serial port reading ...");
-    serial_->read_serial_port();
-    mc_rtc::log::success("[BoneTagSerialPlugin] Serial port reading started !");
-  }
-  catch(std::runtime_error & e)
-  {
-    mc_rtc::log::error("[BoneTagSerialPlugin] Failed to read data");
-    hasReceivedData_ = false;
-  }
-  connect_requested_ = false;
-}
+void BoneTagSerialPlugin::connectAndStartReading() {}
+
 void BoneTagSerialPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc::Configuration & config)
 {
   auto & ctl = gc.controller();
-  data_.assign(serial_->SENSOR_COUNT, 0);
-  lastData_ = data_;
-
-  config("verbose", verbose_);
-  double rate = config("rate", DEFAULT_RATE);
-  rate_ = (1. / rate) / ctl.timeStep;
 
   serial_port_name = config("serial_port_name", std::string{"/dev/ttyUSB0"});
   serial_port_baud_rate = config("serial_port_baud_rate", 9600);
 
-  thread_ = std::thread(
-      [this]()
-      {
-        mc_rtc::log::info("[BoneTagSerialPlugin] Starting serial communication thread with {}", serial_port_name);
-        connectAndStartReading();
+  auto sensor = config("sensor", std::string{"ProtoTMR"});
+  if(sensor == "BoneTag")
+  {
+    mc_rtc::log::info("[BoneTagSerialPlugin] Using BoneTag sensor");
+    mc_rtc::log::error_and_throw("not supported");
+    // serial_.reset(new io::BoneTagSerial{});
+  }
+  else if(sensor == "ProtoTMR")
+  {
+    mc_rtc::log::info("[BoneTagSerialPlugin] Using ProtoTMR sensor");
+    serial_.reset(new io::ProtoTMRSerial{serial_port_name, serial_port_baud_rate});
+  }
+  else
+  {
+    mc_rtc::log::error_and_throw<std::runtime_error>(
+        "[BoneTagSerialPlugin] Unknown sensor type: {}, supported values are BoneTag or ProtoTMR", sensor);
+  }
 
-        unsigned iter_ = 0;
-        while(running_)
-        {
-          if(iter_ == 0 || iter_ % rate_ == 0)
-          {
-            if(connect_requested_)
-            {
-              connectAndStartReading();
-            }
-            iter_ = 0;
-          }
-          ++iter_;
-        }
-        serial_->close_serial_port();
-      });
+  data_.assign(serial_->SENSOR_COUNT, 0);
+  lastData_ = data_;
+
+  config("verbose", verbose_);
 
   gc.controller().datastore().make<bool>("BoneTagSerialPlugin", true);
   gc.controller().datastore().make_call("BoneTagSerialPlugin::Connected", [this]() { return serial_->connected(); });
@@ -103,6 +65,20 @@ void BoneTagSerialPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc
                                           {
                                             lastDataIsNew_ = false;
                                             return lastData_;
+                                          }
+                                          else
+                                          {
+                                            return std::nullopt;
+                                          }
+                                        });
+  gc.controller().datastore().make_call("BoneTagSerialPlugin::GetTimedRawData",
+                                        [this]() -> io::Serial::TimedRawData { return serial_->lastRawData(); });
+  gc.controller().datastore().make_call("BoneTagSerialPlugin::GetNewTimedRawData",
+                                        [this]() -> std::optional<io::Serial::TimedRawData>
+                                        {
+                                          if(serial_->lastRawDataUpdated())
+                                          {
+                                            return serial_->readLastRawData();
                                           }
                                           else
                                           {
@@ -195,46 +171,31 @@ void BoneTagSerialPlugin::before(mc_control::MCGlobalController & gc)
       auto & gui = *gc.controller().gui();
       // Add buttons to add/remove the "BoneTag Measurements" plot
       gui.addElement({"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::ElementsStacking::Horizontal,
-        mc_rtc::gui::Button(
-          "Add BoneTag Measurements Plot",
-          [this, &gui, make_sensor_plot]()
-          {
-            gui.addPlot("BoneTag Measurements", mc_rtc::gui::plot::X("t", [this]() { return t_; }));
-            for(unsigned i = 0; i < serial_->SENSOR_COUNT; ++i)
-            {
-              gui.addPlotData("BoneTag Measurements", make_sensor_plot(i));
-            }
-          }
-        ),
-        mc_rtc::gui::Button(
-          "Remove BoneTag Measurements Plot",
-          [this, &gui]()
-          {
-            gui.removePlot("BoneTag Measurements");
-          }
-        )
-      );
+                     mc_rtc::gui::Button("Add BoneTag Measurements Plot",
+                                         [this, &gui, make_sensor_plot]()
+                                         {
+                                           gui.addPlot("BoneTag Measurements",
+                                                       mc_rtc::gui::plot::X("t", [this]() { return t_; }));
+                                           for(unsigned i = 0; i < serial_->SENSOR_COUNT; ++i)
+                                           {
+                                             gui.addPlotData("BoneTag Measurements", make_sensor_plot(i));
+                                           }
+                                         }),
+                     mc_rtc::gui::Button("Remove BoneTag Measurements Plot",
+                                         [this, &gui]() { gui.removePlot("BoneTag Measurements"); }));
 
       for(unsigned i = 0; i < serial_->SENSOR_COUNT; ++i)
       {
         gui.addElement({"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::ElementsStacking::Horizontal,
-            mc_rtc::gui::Button(
-                fmt::format("Add Sensor {}", i),
-                [this, &gui, make_sensor_plot, i]()
-                {
-                  gui.addPlot(fmt::format("BoneTag Measurements / Sensor {}", i),
-                              mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-                              make_sensor_plot(i));
-                }
-            ),
-          mc_rtc::gui::Button(
-              fmt::format("Remove Sensor {}", i),
-              [this, &gui, i]()
-              {
-                gui.removePlot(fmt::format("BoneTag Measurements / Sensor {}", i));
-              }
-          )
-        );
+                       mc_rtc::gui::Button(fmt::format("Add Sensor {}", i),
+                                           [this, &gui, make_sensor_plot, i]()
+                                           {
+                                             gui.addPlot(fmt::format("BoneTag Measurements / Sensor {}", i),
+                                                         mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+                                                         make_sensor_plot(i));
+                                           }),
+                       mc_rtc::gui::Button(fmt::format("Remove Sensor {}", i), [this, &gui, i]()
+                                           { gui.removePlot(fmt::format("BoneTag Measurements / Sensor {}", i)); }));
       }
 
       std::vector<double> data;

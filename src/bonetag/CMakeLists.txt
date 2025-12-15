@@ -1,4 +1,3 @@
-#add_library(BoneTagSerial SHARED BoneTagSerial.cpp)
 # add_library(BoneTagSerial SHARED BoneTagSerial.cpp Packet.cpp)
 # target_link_libraries(BoneTagSerial PUBLIC mc_rtc::mc_rtc_utils)
 #

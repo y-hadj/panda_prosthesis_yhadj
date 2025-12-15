@@ -75,23 +75,56 @@ void ReadCSV::load(const std::string & path)
 
 std::string Result::to_csv() const
 {
-  return mc_rtc::io::to_string(
-             std::vector<double>{
-                 femurRotation.x(),
-                 femurRotation.y(),
-                 femurRotation.z(),
-                 tibiaRotation.x(),
-                 tibiaRotation.y(),
-                 tibiaRotation.z(),
-                 femurTranslation.x(),
-                 femurTranslation.y(),
-                 femurTranslation.z(),
-                 tibiaTranslation.x(),
-                 tibiaTranslation.y(),
-                 tibiaTranslation.z(),
-             },
-             ",")
-         + "," + mc_rtc::io::to_string(sensorData, ",");
+  if(sensorData.data.empty()) return "";
+  std::stringstream result;
+
+  // n values per sensor
+  auto n = sensorData.data.front().size();
+  // each line is a value for all sensors
+  std::vector<std::string> sensorDataLines;
+  for(int i = 0; i < n; i++)
+  {
+    std::stringstream sensorDataLine;
+    for(int sensor = 0; sensor < sensorData.data.size(); sensor++)
+    {
+      // ith data for sensor sensor
+      auto data = sensorData.data[sensor][i];
+      sensorDataLine << data;
+      if(sensor < sensorData.data.size() - 1)
+      {
+        sensorDataLine << ",";
+      }
+    }
+    sensorDataLines.push_back(sensorDataLine.str());
+  }
+
+  int i = 0;
+  for(const auto & sensorDataLine : sensorDataLines)
+  {
+    result << controllerIter << "," << sensorData.timestamp_ms.count() / 1000.0 << ","
+           << mc_rtc::io::to_string(
+                  std::vector<double>{
+                      femurRotation.x(),
+                      femurRotation.y(),
+                      femurRotation.z(),
+                      tibiaRotation.x(),
+                      tibiaRotation.y(),
+                      tibiaRotation.z(),
+                      femurTranslation.x(),
+                      femurTranslation.y(),
+                      femurTranslation.z(),
+                      tibiaTranslation.x(),
+                      tibiaTranslation.y(),
+                      tibiaTranslation.z(),
+                  },
+                  ",")
+           << "," << sensorDataLine;
+    if(i++ < sensorDataLines.size() - 1)
+    {
+      result << std::endl;
+    }
+  }
+  return result.str();
 }
 
 void ResultHandler::write_csv(const std::string & path)
@@ -104,17 +137,19 @@ void ResultHandler::write_csv(const std::string & path)
     mc_rtc::log::error("Failed to write results to CSV file {}", path);
   }
 
-  csv << "femur_tangage,femur_roulis,femur_lacet,"
+  csv << "iteration,time[s],femur_tangage,femur_roulis,femur_lacet,"
          "tibia_tangage,tibia_roulis,tibia_lacet,"
          "femur_x,femur_y,femur_z,"
          "tibia_x,tibia_y,tibia_z";
 
-  for(size_t i = 0; i < results_.front().sensorData.size(); ++i)
+  // write sensor csv header
+  for(size_t i = 0; i < results_.front().sensorData.data.size(); ++i)
   {
     csv << ",sensor_" << i;
   }
   csv << std::endl;
 
+  // write sensor data. N lines per sensor
   for(const auto & result : results_)
   {
     csv << result.to_csv() << std::endl;
@@ -314,33 +349,23 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
                                               play();
                                             }));
 
-ctl.gui()->addElement(this, {"ManipulateKnee"}, mc_rtc::gui::ElementsStacking::Horizontal,
-    mc_rtc::gui::Checkbox(
-        "Manual Logging",
-        [this]() { return manualLogging_; },
-        [this]() {}
-    ),
-    mc_rtc::gui::Button("Start Logging",
-        [this]()
-        {
-          mc_rtc::log::info("Start manual logging");
-          manualLogging_ = true;
-        }),
-    mc_rtc::gui::Button("Stop & Save",
-        [this]()
-        {
-          mc_rtc::log::info("Saving manual logging results");
-          saveResults();
-        }
-    ),
-    mc_rtc::gui::Button("Clear Results",
-        [this]()
-        {
-            results_.clear();
-        }
-    )
-);
-
+  ctl.gui()->addElement(this, {"ManipulateKnee"}, mc_rtc::gui::ElementsStacking::Horizontal,
+                        mc_rtc::gui::Checkbox(
+                            "Manual Logging", [this]() { return manualLogging_; }, [this]() {}),
+                        mc_rtc::gui::Button("Start Logging",
+                                            [this]()
+                                            {
+                                              mc_rtc::log::info("Start manual logging");
+                                              manualLogging_ = true;
+                                            }),
+                        mc_rtc::gui::Button("Stop and Save",
+                                            [this]()
+                                            {
+                                              mc_rtc::log::info("Saving manual logging results");
+                                              manualLogging_ = false;
+                                              saveResults();
+                                            }),
+                        mc_rtc::gui::Button("Clear Results", [this]() { results_.clear(); }));
 
   ctl.gui()->addElement(
       this, {"ManipulateKnee", "Trajectory"},
@@ -495,17 +520,24 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
     return false;
   }
 
-  auto sensorData = ctl.datastore().call<std::optional<io::Serial::Data>>("BoneTagSerialPlugin::GetNewData");
+  auto sensorData = ctl.datastore().call<std::optional<io::Serial::TimedRawData>>("BoneTagSerialPlugin::GetNewTimedRawData");
   if(sensorData)
   {
-    // mc_rtc::log::info("Got new data");
+    if(firstMeasure_)
+    {
+      mc_rtc::log::info("Skipping first measurement");
+      firstMeasure_ = false;
+      return false;
+    }
     Result result;
+    result.controllerIter = controllerIter_;
     result.femurRotation = femurRotationActual_;
     result.femurTranslation = femurTranslationActual_;
     result.tibiaRotation = tibiaRotationActual_;
     result.tibiaTranslation = tibiaTranslationActual_;
     result.sensorData = *sensorData;
     results_.addResult(result);
+    mc_rtc::log::info("Got new data at t={}[s]", result.sensorData.timestamp_ms.count()/1000);
     ++measuredSamples_;
   }
   return measuredSamples_ == desiredSamples_;
@@ -549,6 +581,7 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
       iter_ = 0;
       measuredSamples_ = 0;
       next_ = false;
+      firstMeasure_ = true;
     }
     else
     {
@@ -601,6 +634,7 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
     measure(ctl);
   }
 
+  ++controllerIter_;
   ++iter_;
   return output().size() != 0;
 }

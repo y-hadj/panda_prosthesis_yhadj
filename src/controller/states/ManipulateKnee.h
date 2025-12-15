@@ -29,6 +29,7 @@ struct PTransformInterpolator
 
 struct Result
 {
+  unsigned int controllerIter;
   // Robot effective motion
   Eigen::Vector3d femurRotation;
   Eigen::Vector3d tibiaRotation;
@@ -36,7 +37,7 @@ struct Result
   Eigen::Vector3d tibiaTranslation;
 
   // Sensor measurements
-  io::Serial::Data sensorData;
+  io::Serial::TimedRawData sensorData;
 
   std::string to_csv() const;
 };
@@ -144,8 +145,9 @@ protected:
   double translationTreshold_ = 0.1; ///< Convergence threshold on translation [mm]
   double rotationTreshold_ = 0.1; ///< Convergence threshold on rotation [deg]
 
-  unsigned desiredSamples_ = 10;
+  unsigned desiredSamples_ = 1;
   unsigned measuredSamples_ = 0;
+  bool firstMeasure_ = true;
 
   ResultHandler results_;
   std::string results_dir_ = "/tmp";
@@ -257,4 +259,6 @@ protected:
   double offsetDuration_ = 2;
   double tibiaOffsetInterpolationTime_ = 0;
   double femurOffsetInterpolationTime_ = 0;
+
+  unsigned int controllerIter_ = 0;
 };
