@@ -50,7 +50,7 @@ robots:
         # plastic support 0.215
         # metal prosthesis 0.1
         X_p_f:
-          translation: [0, 0, -0.225]
+          translation: [0, 0, -0.215]
           rotation: [3.14, 0, 0]
     CollisionBehavior:
       # Changes the collision behavior, see franka::Robot documentation for details

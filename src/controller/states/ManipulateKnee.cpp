@@ -406,7 +406,7 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
         trajectory_file_ = "custom.csv";
         file_.generateFromConfiguration(data);
        },
-       mc_rtc::gui::FormIntegerInput("Waypoints", true, 50),
+       mc_rtc::gui::FormIntegerInput("Waypoints", false, 50),
        mc_rtc::gui::FormArrayInput("MinTibiaRotation",
          false,
          minTibiaRotation_),
@@ -556,7 +556,8 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
   ctl.solver().addTask(femur_task_);
 
   X_0_tibiaAxisInitial = ctl.robot("panda_tibia").frame("Tibia").position();
-  X_0_femurAxisInitial = X_0_tibiaAxisInitial;
+  X_0_femurAxisInitial = ctl.robot("panda_femur").frame("Femur").position();
+  // X_0_femurAxisInitial = X_0_tibiaAxisInitial;
 
   if(ctl.config().has("offsets"))
   {
@@ -631,7 +632,33 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
 
 bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
 {
+  // Increase gains slowly
+  if(controllerIter_++ <= 1000)
+  {
+    auto interpGains = [this](std::string && taskName, mc_tasks::TransformTask & task)
+    {
+      auto s = stiffnessInterp_(
+          config_(taskName)("initial_stiffness"),
+          config_(taskName)("stiffness"), controllerIter_ / 1000.);
+      auto w = dimWeightInterp_(config_(taskName)("initial_dimWeight"), config_(taskName)("dimWeight"), controllerIter_ / 1000.);
+      task.stiffness(s);
+      task.dimWeight(w);
+    };
+    interpGains("FemurTask", *femur_task_);
+    interpGains("TibiaTask", *tibia_task_);
+    return true;
+  }
+  else if(controllerIter_++ == 1001)
+  {
+                                            updateTibiaOffset(tibiaOffsetInitial_);
+                                            updateFemurOffset(femurOffsetInitial_);
+                                            updateAxes(ctl);
+                                            return true;
+  }
+
   updateAxes(ctl);
+
+
   if(file_.tibiaRotationVector.empty())
   {
     if(play_)

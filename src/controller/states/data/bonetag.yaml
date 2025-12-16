@@ -2,7 +2,7 @@ InitializePandaFemur:
   base: Initial
   robot: panda_femur
   frame: Femur
-  stiffness: 10
+  stiffness: 100
   category: ["Initial Configuration"]
   default_pose:
     translation: [-0.7, 0, 0]
@@ -137,16 +137,16 @@ ManipulateKnee::Rotation:
   thresholds:
     translation: 0.1
     rotation: 0.1
-  TibiaTask:
+  TibiaTask: &transform_task_tibia
     type: transform
+    initial_dimWeight: [5, 5, 5, 5, 5, 5]
     dimWeight: [100, 100, 100, 1000, 1000, 1000]
+    initial_stiffness: [5, 5, 5, 5, 5, 5]
     stiffness: [100, 100, 100, 1000, 1000, 1000]
     robot: panda_tibia
     frame: Tibia
   FemurTask:
-    type: transform
-    dimWeight: [100, 100, 100, 1000, 1000, 1000]
-    stiffness: [100, 100, 100, 1000, 1000, 1000]
+    <<: *transform_task_tibia
     robot: panda_femur
     frame: Femur
   femur:

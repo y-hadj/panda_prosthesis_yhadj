@@ -253,6 +253,8 @@ protected:
 
   std::shared_ptr<mc_tasks::TransformTask> tibia_task_;
   std::shared_ptr<mc_tasks::TransformTask> femur_task_;
+  mc_trajectory::LinearInterpolation<sva::MotionVecd> stiffnessInterp_;
+  mc_trajectory::LinearInterpolation<Eigen::Vector6d> dimWeightInterp_;
   bool continuous_ = false;
   bool measure_ = true;
 
