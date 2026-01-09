@@ -119,18 +119,28 @@ ObserverPipelines:
       config:
         robot: panda_femur
         position: encoderValues
-        velocity: encoderFiniteDifferences
+        #velocity: encoderFiniteDifferences
+        #velocity: encoderVelocities
+        velocity: control
   - name: PandaTibia
     observers:
     - type: BodySensor
       config:
         robot: panda_tibia
         method: control
+        log:
+          position: true
+          velocity: true
     - type: Encoder
       config:
         robot: panda_tibia
         position: encoderValues
-        velocity: encoderFiniteDifferences
+        #velocity: encoderFiniteDifferences
+        # velocity: encoderVelocities
+        velocity: control # encoderVelocities
+        log:
+          position: true
+          velocity: true
 
 # Initial set of contacts
 contacts: []

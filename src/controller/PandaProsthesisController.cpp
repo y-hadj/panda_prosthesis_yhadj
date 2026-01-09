@@ -36,8 +36,9 @@ PandaProsthetics::PandaProsthetics(mc_rbdyn::RobotModulePtr rm, double dt, const
 
 bool PandaProsthetics::run()
 {
-  return mc_control::fsm::Controller::run();
+  // return mc_control::fsm::Controller::run();
   // return mc_control::fsm::Controller::run(mc_solver::FeedbackType::Joints);
+  return mc_control::fsm::Controller::run(mc_solver::FeedbackType::ObservedRobots);
 }
 
 void PandaProsthetics::reset(const mc_control::ControllerResetData & reset_data)
