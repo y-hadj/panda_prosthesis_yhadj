@@ -1,0 +1,12 @@
+# Location of data files, all path in the YAML file are
+# interpreted relative to this path unless they are absolute paths
+path: "@MODULE_INSTALL_LOCATION@"
+name: taa_tibia
+urdf_path: urdf/taa_tibia.urdf
+rsdf_dir: rsdf/taa_tibia
+fixed: true
+
+# convexHulls are auto-generated
+
+# Default orientation (quaternion) and position of the floating base
+default_attitude: [1., 0., 0., 0., 0., 0., 0.]

@@ -1,0 +1,19 @@
+<robot name="taa_tibia">
+  <link name="taa_tibia">
+    <visual>
+      <geometry>
+        <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/taa_tibia/taa_tibia.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/taa_tibia/taa_tibia.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+    </inertial>
+  </link>
+</robot>
