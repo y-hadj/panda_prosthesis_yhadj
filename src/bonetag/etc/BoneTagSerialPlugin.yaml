@@ -6,7 +6,8 @@
 verbose: false
 rate: 200 # Rate at which the plugin looks for new data
 #sensor: BoneTag
-sensor: ProtoTMR
+#sensor: ProtoTMR
+sensor: None
 
 # For BoneTagSerial
 # descriptor: "/dev/ttyACM0" # USB serial device

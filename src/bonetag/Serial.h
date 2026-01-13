@@ -1,12 +1,12 @@
 #pragma once
 
 #include <mc_rtc/clock.h>
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <termios.h>
 #include <thread>
 #include <vector>
-#include <atomic>
 
 namespace io
 {

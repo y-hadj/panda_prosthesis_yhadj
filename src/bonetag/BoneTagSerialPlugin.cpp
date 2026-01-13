@@ -38,6 +38,11 @@ void BoneTagSerialPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc
     mc_rtc::log::info("[BoneTagSerialPlugin] Using ProtoTMR sensor");
     serial_.reset(new io::ProtoTMRSerial{serial_port_name, serial_port_baud_rate});
   }
+  else if(sensor == "None")
+  {
+    mc_rtc::log::warning("[BoneTagSerialPlugin] No sensor used because 'sensor: {}'", sensor);
+    return;
+  }
   else
   {
     mc_rtc::log::error_and_throw<std::runtime_error>(
@@ -121,6 +126,8 @@ void BoneTagSerialPlugin::reset(mc_control::MCGlobalController & controller) {}
 
 void BoneTagSerialPlugin::before(mc_control::MCGlobalController & gc)
 {
+  if(!serial_) return;
+
   std::lock_guard<std::mutex> lockReceivedDataMutex(serial_->received_data_mutex);
 
   // all_data.insert(all_data.end(),serial_->received_data.begin(),serial_->received_data.end());
