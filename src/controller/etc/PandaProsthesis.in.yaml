@@ -37,21 +37,6 @@ robots:
   panda_femur:
     init_pos:
       translation: [0,0,0]
-    frames:
-      - name: FemurCalibration
-        parent: support_femur
-        X_p_f:
-          translation: [0, 0, -0.215]
-          rotation: [3.14, 0, 0.]
-      # Frame above the surface of the Femur
-      # This should contain the desired offset distance between the femur and the joint center
-      - name: Femur
-        parent: support_femur
-        # plastic support 0.215
-        # metal prosthesis 0.1
-        X_p_f:
-          translation: [0, 0, -0.215]
-          rotation: [3.14, 0, 0]
     CollisionBehavior:
       # Changes the collision behavior, see franka::Robot documentation for details
       # Set common torque and force boundaries for acceleration/deceleration and constant velocity movement phases.
@@ -68,23 +53,9 @@ robots:
       lower_force_thresholds: [-100, -100, -100, -100, -100, -100]
       upper_force_thresholds: [100, 100, 100, 100, 100, 100]
   panda_tibia:
-    module: Panda7LIRMMDefault::BoneTag::Tibia
+    # module: Panda7LIRMMDefault::BoneTag::Tibia
+    module: Panda7LIRMMDefault::TAA::Talar
     # module: UR10::BoneTag::Tibia
-    frames:
-      - name: TibiaCalibration
-        parent: tibia_base_link
-        X_p_f:
-          translation: [0.0, 0.095, 0.225] # assuming 2cm height for the calibration tool
-          rotation: [1.57, 0, 0]
-      # Frame above the surface of the Tibia
-      # This should contain the desired offset distance between the tibia and the joint center
-      - name: Tibia
-        parent: tibia_base_link
-        # Plastic base height: 0.065
-        # Metal support: 0.01
-        X_p_f:
-          translation: [0, 0.075, 0.23]
-          rotation: [1.57, 0, 0]
     CollisionBehavior:
       # See panda_femur for details
       lower_torque_thresholds: [-87, -87, -87, -87, -11, -11, -11]

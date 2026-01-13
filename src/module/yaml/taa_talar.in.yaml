@@ -10,3 +10,19 @@ fixed: true
 
 # Default orientation (quaternion) and position of the floating base
 default_attitude: [1., 0., 0., 0., 0., 0., 0.]
+
+frames:
+  - name: TibiaCalibration
+    parent: taa_talar
+    X_p_f:
+      translation: [0, 0, 0.282] # FIXME
+      rotation: [3.14, 0, 3.14]
+  # Frame above the surface of the Femur
+  # This should contain the desired offset distance between the femur and the joint center
+  - name: Tibia
+    parent: taa_talar
+    # plastic support 0.215
+    # metal prosthesis 0.1
+    X_p_f:
+      translation: [0, 0, 0.282] # FIXME
+      rotation: [3.14, 0, 3.14]
