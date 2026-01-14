@@ -2,12 +2,12 @@
   <link name="taa_talar">
     <visual>
       <geometry>
-        <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/taa_talar/taa_talar.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://@MODULE_INSTALL_LOCATION@/meshes/taa_talar/taa_talar.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/taa_talar/taa_talar.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="file://@MODULE_INSTALL_LOCATION@/meshes/taa_talar/taa_talar.stl" scale="0.001 0.001 0.001" />
       </geometry>
     </collision>
     <inertial>

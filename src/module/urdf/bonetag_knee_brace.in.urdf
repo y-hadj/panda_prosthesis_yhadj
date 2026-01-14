@@ -2,12 +2,12 @@
   <link name="bonetag_knee_brace">
     <visual>
       <geometry>
-        <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/bonetag_knee_brace/KneeBrace_v5_origin.stl" scale="1 1 1" />
+        <mesh filename="file://@MODULE_INSTALL_LOCATION@/meshes/bonetag_knee_brace/KneeBrace_v5_origin.stl" scale="1 1 1" />
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/bonetag_knee_brace/KneeBrace_v5_origin.stl" scale="1 1 1" />
+        <mesh filename="file://@MODULE_INSTALL_LOCATION@/meshes/bonetag_knee_brace/KneeBrace_v5_origin.stl" scale="1 1 1" />
       </geometry>
     </collision>
     <inertial>

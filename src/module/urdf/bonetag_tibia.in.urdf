@@ -8,12 +8,12 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/bonetag_tibia/support_tibia.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="file://@MODULE_INSTALL_LOCATION@/meshes/bonetag_tibia/support_tibia.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
         <collision>
             <geometry>
-                <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/bonetag_tibia/support_tibia.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="file://@MODULE_INSTALL_LOCATION@/meshes/bonetag_tibia/support_tibia.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </collision>
     </link>
@@ -25,12 +25,12 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/bonetag_tibia/tibia.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="file://@MODULE_INSTALL_LOCATION@/meshes/bonetag_tibia/tibia.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
         <collision>
             <geometry>
-                <mesh filename="@MODULE_INSTALL_LOCATION@/meshes/bonetag_tibia/tibia.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="file://@MODULE_INSTALL_LOCATION@/meshes/bonetag_tibia/tibia.stl" scale="0.001 0.001 0.001"/>
             </geometry>
         </collision>
     </link>
