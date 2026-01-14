@@ -1,7 +1,7 @@
 # Location of data files, all path in the YAML file are
 # interpreted relative to this path unless they are absolute paths
 path: "@MODULE_INSTALL_LOCATION@"
-name: bonetag_knee_brace 
+name: bonetag_knee_brace
 urdf_path: urdf/bonetag_knee_brace.urdf
 rsdf_dir: rsdf/bonetag_knee_brace
 fixed: true
