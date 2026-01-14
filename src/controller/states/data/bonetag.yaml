@@ -2,6 +2,7 @@ InitializePandaFemur:
   base: Initial
   robot: panda_femur
   frame: Femur
+  showInstructions: true
   stiffness: 100
   category: ["Initial Configuration"]
   default_pose:
@@ -12,6 +13,7 @@ InitializePandaTibia:
   base: InitializePandaFemur
   robot: panda_tibia
   frame: Tibia
+  showInstructions: false
   default_pose:
     translation: [0.7, 0, 0]
     rotation: [0, 0, 3.14]
@@ -23,9 +25,10 @@ InitializeRobots:
     Choice:
       category: []
       choices:
-        - ["Calibrate", "Calibrate"]
-        - ["Calibrate With Tool", "CalibrateWithTool"]
+        - ["Save Calibration Pose", "Calibrate"]
         - ["Skip Calibration", "SkipCalibration"]
+        - ["Manual Calibration", "ManualCalibration"]
+        - ["[WIP] Calibrate With Tool", "CalibrateWithTool"]
 
 InitializeRobots::Load:
   base: InitializeRobots
@@ -192,6 +195,7 @@ Simulation:
   - [InitializeRobots::Load, Calibrate, Calibrate, Auto]
   - [InitializeRobots::Load, CalibrateWithTool, CalibrateWithTool, Auto]
   - [InitializeRobots::Load, SkipCalibration, ManipulateKnee::Rotation, Auto]
+  - [InitializeRobots::Load, ManualCalibration, InitializeRobots::NoLoad, Auto]
   - [InitializeRobots::NoLoad, Calibrate, Calibrate, Auto]
   - [InitializeRobots::NoLoad, CalibrateWithTool, CalibrateWithTool, Auto]
 
