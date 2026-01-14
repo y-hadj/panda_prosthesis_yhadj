@@ -87,6 +87,7 @@ ChangeTool:
   AddCollisions: &collisions_panda_femur_tibia
     - r1: panda_femur
       r2: panda_tibia
+      optional: true
       collisions:
         - body1: femur
           body2: tibia
@@ -121,6 +122,7 @@ ChangeTool:
     # avoid collisions between panda_tibia and tools and panda_femur support table
     - r1: panda_tibia
       r2: panda_femur
+      optional: true
       collisions:
         - body1: tibia
           body2: robot_support
@@ -195,6 +197,7 @@ Simulation:
   - [InitializeRobots::Load, Calibrate, Calibrate, Auto]
   - [InitializeRobots::Load, CalibrateWithTool, CalibrateWithTool, Auto]
   - [InitializeRobots::Load, SkipCalibration, ManipulateKnee::Rotation, Auto]
+  - [ManipulateKnee::Rotation, OK, InitialChoice, Strict]
   - [InitializeRobots::Load, ManualCalibration, InitializeRobots::NoLoad, Auto]
   - [InitializeRobots::NoLoad, Calibrate, Calibrate, Auto]
   - [InitializeRobots::NoLoad, CalibrateWithTool, CalibrateWithTool, Auto]
