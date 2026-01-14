@@ -113,8 +113,8 @@ void Initial::start(mc_control::fsm::Controller & ctl)
     mc_rtc::log::error_and_throw("[{}] No \"ETC_DIR\"  entry specified", name());
   }
   auto controllerName = ctl.datastore().get<std::string>("ControllerName");
-  etc_file_ =
-      static_cast<std::string>(ctl.config()("ETC_DIR")) + "/" + controllerName + "/initial_" + robotName_ + ".yaml";
+  etc_file_ = fmt::format("{}/{}/initial_{}.yaml", static_cast<std::string>(ctl.config()("ETC_DIR")), controllerName,
+                          robot.module().parameters()[0]);
 
   if(useJoints_)
   {

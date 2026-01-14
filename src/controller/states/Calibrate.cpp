@@ -52,11 +52,13 @@ void Calibrate::teardown(mc_control::fsm::Controller & ctl)
       mc_rtc::log::error_and_throw("[{}] No \"ETC_DIR\"  entry specified", name());
     }
     auto controllerName = ctl.datastore().get<std::string>("ControllerName");
-    auto etc_file =
-        static_cast<std::string>(ctl.config()("ETC_DIR")) + "/" + controllerName + "/initial_panda_femur.yaml";
-    save(etc_file, ctl.robot("panda_femur"));
-    etc_file = static_cast<std::string>(ctl.config()("ETC_DIR")) + "/" + controllerName + "/initial_panda_tibia.yaml";
-    save(etc_file, ctl.robot("panda_tibia"));
+    auto etc_file = [&ctl, controllerName](const mc_rbdyn::Robot & robot) -> std::string
+    {
+      return fmt::format("{}/{}/initial_{}.yaml", static_cast<std::string>(ctl.config()("ETC_DIR")), controllerName,
+                         robot.module().parameters()[0]);
+    };
+    save(etc_file(ctl.robot("panda_femur")), ctl.robot("panda_femur"));
+    save(etc_file(ctl.robot("panda_tibia")), ctl.robot("panda_tibia"));
   }
 
   ctl.gui()->removeElements(this);
