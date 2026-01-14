@@ -20,6 +20,7 @@ endmacro()
 add_yaml_module(bonetag_tibia)
 add_yaml_module(bonetag_tibia_calibration_tool)
 add_yaml_module(bonetag_femur)
+add_yaml_module(bonetag_knee_brace)
 add_yaml_module(taa_talar)
 add_yaml_module(taa_tibia)
 

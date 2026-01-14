@@ -1,4 +1,5 @@
 add_fsm_state_simple(Initial)
+add_fsm_state_simple(AttachKnee)
 add_fsm_state_simple(ConnectRobots)
 add_fsm_state_simple(ChooseTrajectory)
 target_link_libraries(ChooseTrajectory PUBLIC PandaProsthesisCommon)

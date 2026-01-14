@@ -136,35 +136,40 @@ ChangeTool:
           body2: robot_support
 
 ManipulateKnee::Rotation:
-  base: ManipulateKnee
-  samples: 1
-  rate: 0.5
-  thresholds:
-    translation: 0.1
-    rotation: 0.1
-  TibiaTask: &transform_task_tibia
-    type: transform
-    initial_dimWeight: [5, 5, 5, 5, 5, 5]
-    dimWeight: [100, 100, 100, 1000, 1000, 1000]
-    initial_stiffness: [5, 5, 5, 5, 5, 5]
-    # stiffness: [100, 100, 100, 1000, 1000, 1000] # original openloop gains
-    stiffness: [20, 20, 20, 50, 50, 50] # more reasonable closedloop gains
-    robot: panda_tibia
-    frame: Tibia
-  FemurTask:
-    <<: *transform_task_tibia
-    robot: panda_femur
-    frame: Femur
-  femur:
-    minRotation: [-60, -15, -15]
-    maxRotation: [10, 15, 15]
-    minTranslation: [-30, -50, -50]
-    maxTranslation: [30, 50, 10]
-  tibia:
-    minRotation: [-30, -15, -15]
-    maxRotation: [30, 15, 15]
-    minTranslation: [-30, -50, -10]
-    maxTranslation: [30, 50, 50]
+  base: Parallel
+  states: [AttachKnee, ManipulateKnee]
+  configs:
+    AttachKnee:
+      followKnee: true
+    ManipulateKnee:
+      samples: 1
+      rate: 0.5
+      thresholds:
+        translation: 0.1
+        rotation: 0.1
+      TibiaTask: &transform_task_tibia
+        type: transform
+        initial_dimWeight: [5, 5, 5, 5, 5, 5]
+        dimWeight: [100, 100, 100, 1000, 1000, 1000]
+        initial_stiffness: [5, 5, 5, 5, 5, 5]
+        # stiffness: [100, 100, 100, 1000, 1000, 1000] # original openloop gains
+        stiffness: [20, 20, 20, 50, 50, 50] # more reasonable closedloop gains
+        robot: panda_tibia
+        frame: Tibia
+      FemurTask:
+        <<: *transform_task_tibia
+        robot: panda_femur
+        frame: Femur
+      femur:
+        minRotation: [-60, -15, -15]
+        maxRotation: [10, 15, 15]
+        minTranslation: [-30, -50, -50]
+        maxTranslation: [30, 50, 10]
+      tibia:
+        minRotation: [-30, -15, -15]
+        maxRotation: [30, 15, 15]
+        minTranslation: [-30, -50, -10]
+        maxTranslation: [30, 50, 50]
 
 ConnectCalibrationTool:
   base: ConnectRobots
