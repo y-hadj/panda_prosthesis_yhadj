@@ -9,27 +9,31 @@ struct ConnectRobotsSchema
 {
   MC_RTC_NEW_SCHEMA(ConnectRobotsSchema)
   MC_RTC_SCHEMA_MEMBER(ConnectRobotsSchema, std::string, robot, "Robot Name", mc_rtc::schema::Interactive, "")
+  MC_RTC_SCHEMA_MEMBER(ConnectRobotsSchema, bool, connect, "Connect/Disconnect", mc_rtc::schema::Interactive, true)
   MC_RTC_SCHEMA_MEMBER(ConnectRobotsSchema,
-      bool, connect, "Connect/Disconnect",
-      mc_rtc::schema::Interactive,
-      true)
+                       std::string,
+                       connectModule,
+                       "Connect with module",
+                       mc_rtc::schema::Required | mc_rtc::schema::Interactive,
+                       std::string{})
   MC_RTC_SCHEMA_MEMBER(ConnectRobotsSchema,
-      std::string, connectModule, "Connect with module",
-      mc_rtc::schema::Required | mc_rtc::schema::Interactive,
-      std::string{})
+                       std::string,
+                       fromLink,
+                       "fromLink",
+                       mc_rtc::schema::Required | mc_rtc::schema::Interactive,
+                       std::string{})
   MC_RTC_SCHEMA_MEMBER(ConnectRobotsSchema,
-      std::string, fromLink, "fromLink",
-      mc_rtc::schema::Required | mc_rtc::schema::Interactive,
-      std::string{})
+                       std::string,
+                       toLink,
+                       "toLink",
+                       mc_rtc::schema::Required | mc_rtc::schema::Interactive,
+                       std::string{})
   MC_RTC_SCHEMA_MEMBER(ConnectRobotsSchema,
-      std::string, toLink, "toLink",
-      mc_rtc::schema::Required | mc_rtc::schema::Interactive,
-      std::string{})
-  MC_RTC_SCHEMA_MEMBER(ConnectRobotsSchema,
-      sva::PTransformd, X_connect, "X_connect",
-      mc_rtc::schema::Required | mc_rtc::schema::Interactive,
-      sva::PTransformd::Identity())
-
+                       sva::PTransformd,
+                       X_connect,
+                       "X_connect",
+                       mc_rtc::schema::Required | mc_rtc::schema::Interactive,
+                       sva::PTransformd::Identity())
 };
 
 void ConnectRobots::start(mc_control::fsm::Controller & ctl)
@@ -47,9 +51,8 @@ void ConnectRobots::start(mc_control::fsm::Controller & ctl)
   if(schema.connect)
   {
     mc_rtc::log::info("[{}] Connecting robot module to robot {}", name(), schema.robot);
-    auto connect = rm.connect(*connect_rm,
-        schema.fromLink, schema.toLink, "",
-        mc_rbdyn::RobotModule::ConnectionParameters{}.X_other_connection(schema.X_connect));
+    auto connect = rm.connect(*connect_rm, schema.fromLink, schema.toLink, "",
+                              mc_rbdyn::RobotModule::ConnectionParameters{}.X_other_connection(schema.X_connect));
     connect.name = schema.robot + "_connect";
     mc_rtc::log::info("[{}] Robot module connected to robot {}", name(), schema.robot);
 
@@ -64,7 +67,6 @@ void ConnectRobots::start(mc_control::fsm::Controller & ctl)
     mc_rtc::log::info("[{}] Loaded robot {}", name(), schema.robot + "_connect");
     mc_rtc::log::info("robots size: {}", ctl.robots().size());
     mc_rtc::log::info("robot new name: {}", ctl.robot(schema.robot + "_connect").name());
-
   }
   else
   {
@@ -77,8 +79,6 @@ bool ConnectRobots::run(mc_control::fsm::Controller & ctl)
   return true;
 }
 
-void ConnectRobots::teardown(mc_control::fsm::Controller & ctl)
-{
-}
+void ConnectRobots::teardown(mc_control::fsm::Controller & ctl) {}
 
 EXPORT_SINGLE_STATE("ConnectRobots", ConnectRobots)

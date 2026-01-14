@@ -5,9 +5,9 @@
 #include <mc_rtc/gui/NumberInput.h>
 #include <mc_rtc/io_utils.h>
 #include <mc_tasks/MetaTaskLoader.h>
+#include <mc_trajectory/LinearInterpolation.h>
 #include <boost/filesystem.hpp>
 #include <3rd-party/csv.h>
-#include <mc_trajectory/LinearInterpolation.h>
 
 namespace fs = boost::filesystem;
 
@@ -73,7 +73,6 @@ void ReadCSV::load(const std::string & path)
     tibiaRotationVector.push_back(tibiaRotation);
   }
 }
-
 
 void ReadCSV::generateFromConfiguration(const mc_rtc::Configuration & config)
 {
@@ -399,41 +398,23 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
                                               play();
                                             }));
   ctl.gui()->addElement(this, {"ManipulateKnee", "Trajectory", "Generate"},
-      mc_rtc::gui::Form("Generate trajectory",
-       [this](const mc_rtc::Configuration & data)
-       {
-        mc_rtc::log::info("Generating trajectory\n{}", data.dump(true, true));
-        trajectory_file_ = "custom.csv";
-        file_.generateFromConfiguration(data);
-       },
-       mc_rtc::gui::FormIntegerInput("Waypoints", false, 50),
-       mc_rtc::gui::FormArrayInput("MinTibiaRotation",
-         false,
-         minTibiaRotation_),
-       mc_rtc::gui::FormArrayInput("MaxTibiaRotation",
-         false,
-         maxTibiaRotation_),
-       mc_rtc::gui::FormArrayInput("MinFemurRotation",
-         false,
-         minFemurRotation_),
-       mc_rtc::gui::FormArrayInput("MaxFemurRotation",
-         false,
-         maxFemurRotation_),
-       mc_rtc::gui::FormArrayInput("MinTibiaTranslation",
-         false,
-         minTibiaTranslation_),
-       mc_rtc::gui::FormArrayInput("MaxTibiaTranslation",
-         false,
-         maxTibiaTranslation_),
-       mc_rtc::gui::FormArrayInput("minFemurTranslation",
-         false,
-         minFemurTranslation_),
-       mc_rtc::gui::FormArrayInput("maxFemurTranslation",
-         false,
-         maxFemurTranslation_))
-           );
-
-
+                        mc_rtc::gui::Form(
+                            "Generate trajectory",
+                            [this](const mc_rtc::Configuration & data)
+                            {
+                              mc_rtc::log::info("Generating trajectory\n{}", data.dump(true, true));
+                              trajectory_file_ = "custom.csv";
+                              file_.generateFromConfiguration(data);
+                            },
+                            mc_rtc::gui::FormIntegerInput("Waypoints", false, 50),
+                            mc_rtc::gui::FormArrayInput("MinTibiaRotation", false, minTibiaRotation_),
+                            mc_rtc::gui::FormArrayInput("MaxTibiaRotation", false, maxTibiaRotation_),
+                            mc_rtc::gui::FormArrayInput("MinFemurRotation", false, minFemurRotation_),
+                            mc_rtc::gui::FormArrayInput("MaxFemurRotation", false, maxFemurRotation_),
+                            mc_rtc::gui::FormArrayInput("MinTibiaTranslation", false, minTibiaTranslation_),
+                            mc_rtc::gui::FormArrayInput("MaxTibiaTranslation", false, maxTibiaTranslation_),
+                            mc_rtc::gui::FormArrayInput("minFemurTranslation", false, minFemurTranslation_),
+                            mc_rtc::gui::FormArrayInput("maxFemurTranslation", false, maxFemurTranslation_)));
 
   ctl.gui()->addElement(this, {"ManipulateKnee"}, mc_rtc::gui::ElementsStacking::Horizontal,
                         mc_rtc::gui::Checkbox(
@@ -570,6 +551,7 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
   updateTibiaOffset(tibiaOffsetInitial_);
   updateFemurOffset(femurOffsetInitial_);
 
+  output("OK");
   run(ctl);
 }
 
@@ -607,7 +589,8 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
     return false;
   }
 
-  auto sensorData = ctl.datastore().call<std::optional<io::Serial::TimedRawData>>("BoneTagSerialPlugin::GetNewTimedRawData");
+  auto sensorData =
+      ctl.datastore().call<std::optional<io::Serial::TimedRawData>>("BoneTagSerialPlugin::GetNewTimedRawData");
   if(sensorData)
   {
     if(firstMeasure_)
@@ -624,7 +607,7 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
     result.tibiaTranslation = tibiaTranslationActual_;
     result.sensorData = *sensorData;
     results_.addResult(result);
-    mc_rtc::log::info("Got new data at t={}[s]", result.sensorData.timestamp_ms.count()/1000);
+    mc_rtc::log::info("Got new data at t={}[s]", result.sensorData.timestamp_ms.count() / 1000);
     ++measuredSamples_;
   }
   return measuredSamples_ == desiredSamples_;
@@ -637,10 +620,10 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
   {
     auto interpGains = [this](std::string && taskName, mc_tasks::TransformTask & task)
     {
-      auto s = stiffnessInterp_(
-          config_(taskName)("initial_stiffness"),
-          config_(taskName)("stiffness"), controllerIter_ / 1000.);
-      auto w = dimWeightInterp_(config_(taskName)("initial_dimWeight"), config_(taskName)("dimWeight"), controllerIter_ / 1000.);
+      auto s = stiffnessInterp_(config_(taskName)("initial_stiffness"), config_(taskName)("stiffness"),
+                                controllerIter_ / 1000.);
+      auto w = dimWeightInterp_(config_(taskName)("initial_dimWeight"), config_(taskName)("dimWeight"),
+                                controllerIter_ / 1000.);
       task.stiffness(s);
       task.dimWeight(w);
     };
@@ -650,14 +633,13 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
   }
   else if(controllerIter_++ == 1001)
   {
-                                            updateTibiaOffset(tibiaOffsetInitial_);
-                                            updateFemurOffset(femurOffsetInitial_);
-                                            updateAxes(ctl);
-                                            return true;
+    updateTibiaOffset(tibiaOffsetInitial_);
+    updateFemurOffset(femurOffsetInitial_);
+    updateAxes(ctl);
+    return true;
   }
 
   updateAxes(ctl);
-
 
   if(file_.tibiaRotationVector.empty())
   {
@@ -749,7 +731,7 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
 
   ++controllerIter_;
   ++iter_;
-  return output().size() != 0;
+  return true;
 }
 
 void ManipulateKnee::teardown(mc_control::fsm::Controller & ctl)
