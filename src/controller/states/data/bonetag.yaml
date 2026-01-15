@@ -141,6 +141,7 @@ ManipulateKnee::Rotation:
   configs:
     AttachKnee:
       followKnee: true
+      display: false
     ManipulateKnee:
       samples: 1
       rate: 0.5
