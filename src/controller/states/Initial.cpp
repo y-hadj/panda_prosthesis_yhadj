@@ -6,6 +6,10 @@
 #include <RBDyn/MultiBodyConfig.h>
 #include <boost/filesystem.hpp>
 #include <Eigen/src/Core/Matrix.h>
+#include <filesystem>
+#include <utils.h>
+
+namespace fs = std::filesystem;
 
 void Initial::load(mc_control::fsm::Controller & ctl)
 {
@@ -108,13 +112,18 @@ void Initial::start(mc_control::fsm::Controller & ctl)
     mc_rtc::log::error_and_throw("[{}] No frame named \"{}\" in robot \"{}\"", name(), frame_, robotName_);
   }
 
-  if(!ctl.config().has("ETC_DIR") && ctl.config()("ETC_DIR").empty())
-  {
-    mc_rtc::log::error_and_throw("[{}] No \"ETC_DIR\"  entry specified", name());
-  }
+  auto etc_dir = get_or_create_dir("calibration");
   auto controllerName = ctl.datastore().get<std::string>("ControllerName");
-  etc_file_ = fmt::format("{}/{}/initial_{}.yaml", static_cast<std::string>(ctl.config()("ETC_DIR")), controllerName,
-                          robot.module().parameters()[0]);
+  etc_file_ = fmt::format("{}/{}/initial_{}.yaml", etc_dir, controllerName, robot.module().parameters()[0]);
+  if(fs::exists(etc_file_))
+  {
+    mc_rtc::log::info("[{}] Found existing user configuration file at {}", name(), etc_file_);
+  }
+  else
+  {
+    etc_file_ = fmt::format("{}/{}/initial_{}.yaml", static_cast<std::string>(ctl.config()("CALIB_DIR_INIT")),
+                            controllerName, robot.module().parameters()[0]);
+  }
 
   if(useJoints_)
   {

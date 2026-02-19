@@ -1,6 +1,32 @@
 #pragma once
 #include <boost/filesystem.hpp>
 #include <cmath>
+#include <string>
+
+// Use environment variable or fallback to $HOME/.local/share/<project>/results
+inline std::string get_or_create_dir(std::string_view name)
+{
+  const char * env = std::getenv("PANDA_PROSTHESIS_RUNTIME_CONFIG_PATH");
+  std::string dir;
+  if(env)
+  {
+    dir = std::string(env);
+  }
+  else
+  {
+    const char * home = std::getenv("HOME");
+    if(home)
+    {
+      dir = std::string(home) + "/.local/share/mc-rtc/controllers/panda_prosthesis/" + std::string{name};
+    }
+    else
+    {
+      dir = "/tmp/mc-rtc/controllers/panda_prosthesis/" + std::string{name};
+    }
+  }
+  boost::filesystem::create_directories(dir);
+  return dir;
+}
 
 /**
  * \brief   Return the filenames of all files that have the specified extension

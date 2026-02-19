@@ -1,6 +1,7 @@
 #include "Calibrate.h"
 
 #include <mc_control/fsm/Controller.h>
+#include <utils.h>
 
 // XXX it would make more sense to store the pose corresponding to the
 // calibrated joint without the calibration tool,
@@ -47,16 +48,10 @@ void Calibrate::teardown(mc_control::fsm::Controller & ctl)
 {
   if(config_("save", true))
   {
-    if(!ctl.config().has("ETC_DIR") && ctl.config()("ETC_DIR").empty())
-    {
-      mc_rtc::log::error_and_throw("[{}] No \"ETC_DIR\"  entry specified", name());
-    }
     auto controllerName = ctl.datastore().get<std::string>("ControllerName");
-    auto etc_file = [&ctl, controllerName](const mc_rbdyn::Robot & robot) -> std::string
-    {
-      return fmt::format("{}/{}/initial_{}.yaml", static_cast<std::string>(ctl.config()("ETC_DIR")), controllerName,
-                         robot.module().parameters()[0]);
-    };
+    auto etc_dir = get_or_create_dir("calibration/" + controllerName);
+    auto etc_file = [&ctl, etc_dir](const mc_rbdyn::Robot & robot) -> std::string
+    { return fmt::format("{}/initial_{}.yaml", etc_dir, robot.module().parameters()[0]); };
     save(etc_file(ctl.robot("panda_femur")), ctl.robot("panda_femur"));
     save(etc_file(ctl.robot("panda_tibia")), ctl.robot("panda_tibia"));
   }

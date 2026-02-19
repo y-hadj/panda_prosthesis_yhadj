@@ -8,24 +8,9 @@
 #include <mc_trajectory/LinearInterpolation.h>
 #include <boost/filesystem.hpp>
 #include <3rd-party/csv.h>
+#include <utils.h>
 
 namespace fs = boost::filesystem;
-
-double truncate(double value, double precision = 2)
-{
-  return (floor((value * pow(10, precision) + 0.5)) / pow(10, precision));
-}
-
-template<typename VectorT>
-VectorT truncate(const VectorT & value, double precision = 2)
-{
-  VectorT r;
-  for(unsigned i = 0; i < value.size(); ++i)
-  {
-    r[i] = truncate(value[i], precision);
-  }
-  return r;
-}
 
 /**
  * \brief   Return the filenames of all files that have the specified extension
@@ -242,7 +227,7 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
   }
 
   ctl.config()("trajectory_dir", trajectory_dir_);
-  ctl.config()("results_dir", results_dir_);
+  results_dir_ = get_or_create_dir("results");
 
   auto make_input = [this](mc_rtc::gui::StateBuilder & gui, std::vector<std::string> category, const std::string & name,
                            const std::string & title, std::vector<std::string> axes, Eigen::Vector3d & rotation,

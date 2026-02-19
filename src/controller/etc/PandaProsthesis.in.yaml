@@ -26,7 +26,6 @@ TrajectoryLoaders:
     directory: "@TRAJECTORY_DIR@"
 
 trajectory_dir: "@TRAJECTORY_DIR@/bonetag"
-results_dir: "@RESULTS_DIR@/bonetag"
 offsets:
   femur:
     translation: [0, 0, 0.0]
@@ -133,4 +132,4 @@ transitions:
 # Initial state
 init: ChooseMode
 # Store the location of configuration files
-ETC_DIR: "@CMAKE_CURRENT_SOURCE_DIR@/etc"
+CALIB_DIR_INIT: "@CALIB_DIR_INIT@"
