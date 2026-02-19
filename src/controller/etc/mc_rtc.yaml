@@ -1,10 +1,10 @@
-# MainRobot:
-#   module: Panda2LIRMMDefault::BoneTag::Femur
-#   name: panda_femur
-
 MainRobot:
-  module: Panda2LIRMMDefault::TAA::Tibia
+  module: Panda2LIRMMDefault::BoneTag::Femur
   name: panda_femur
+
+# MainRobot:
+#   module: Panda2LIRMMDefault::TAA::Tibia
+#   name: panda_femur
 
 # MainRobot: UR10::BoneTag::Femur
 Enabled: PandaProsthesis

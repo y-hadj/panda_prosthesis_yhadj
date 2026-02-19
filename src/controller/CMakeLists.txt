@@ -34,6 +34,7 @@ install(DIRECTORY etc/bonetag_panda DESTINATION ${CALIB_DIR_INIT} FILES_MATCHING
 # set(RESULTS_DIR "${PROJECT_SOURCE_DIR}/data/results")
 configure_file(etc/PandaProsthesis.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/etc/PandaProsthesis.yaml")
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/etc/PandaProsthesis.yaml" DESTINATION "${MC_CONTROLLER_RUNTIME_INSTALL_PREFIX}/etc")
+install(FILES "etc/mc_rtc.yaml" DESTINATION "${MC_CONTROLLER_RUNTIME_INSTALL_PREFIX}/etc")
 
 
 # PandaBrace controller (Lea's orthesis)
@@ -49,7 +50,6 @@ if(TARGET PandaBraceModule)
   set(RESULTS_DIR "${PROJECT_SOURCE_DIR}/data/results")
   configure_file(etc/PandaBrace.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/etc/PandaBrace.yaml")
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/etc/PandaBrace.yaml" DESTINATION "${MC_CONTROLLER_RUNTIME_INSTALL_PREFIX}/etc")
-  install(FILES "${PROJECT_SOURCE_DIR}/etc/mc_rtc.yaml" DESTINATION "${MC_CONTROLLER_RUNTIME_INSTALL_PREFIX}/etc")
 
   configure_file(etc/AtiDaq.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/etc/AtiDaq.yaml")
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/etc/AtiDaq.yaml" DESTINATION "${MC_CONTROLLER_RUNTIME_INSTALL_PREFIX}/etc/PandaBrace/plugins/")
