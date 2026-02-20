@@ -24,6 +24,7 @@ Franka:
 
 
 ControllerModulePaths: ["@MC_CONTROLLER_RUNTIME_INSTALL_PREFIX@"]
-RobotModulePaths: ["@MC_ROBOTS_RUNTIME_INSTALL_PREFIX@"]
-ObserverModulePaths: []
-GlobalPluginPaths: ["@MC_PLUGINS_RUNTIME_INSTALL_PREFIX@"]
+# FIXME: temporarely disable path to the robot runtime as it is not loaded properly by mc_rtc, why?
+# RobotModulePaths: ["@MC_ROBOTS_RUNTIME_INSTALL_PREFIX@"]
+# ObserverModulePaths: []
+# GlobalPluginPaths: ["@MC_PLUGINS_RUNTIME_INSTALL_PREFIX@"]
