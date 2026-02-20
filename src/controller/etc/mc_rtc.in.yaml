@@ -21,3 +21,9 @@ Franka:
     ip: panda7
   # Actuated robots that are not controlled via mc_franka
   ignored: [env/door, env/box]
+
+
+ControllerModulePaths: ["@MC_CONTROLLER_RUNTIME_INSTALL_PREFIX@"]
+RobotModulePaths: ["@MC_ROBOTS_RUNTIME_INSTALL_PREFIX@"]
+ObserverModulePaths: []
+GlobalPluginPaths: ["@MC_PLUGINS_RUNTIME_INSTALL_PREFIX@"]
