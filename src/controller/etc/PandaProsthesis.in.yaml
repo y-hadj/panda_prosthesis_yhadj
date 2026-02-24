@@ -54,6 +54,7 @@ robots:
   panda_tibia:
     module: Panda7LIRMMDefault::BoneTag::Tibia
     # module: Panda7LIRMMDefault::TAA::Talar
+    module: Panda7LIRMMDefault::TSA::Glenoid
     # module: UR10::BoneTag::Tibia
     CollisionBehavior:
       # See panda_femur for details

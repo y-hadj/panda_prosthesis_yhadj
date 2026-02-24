@@ -6,6 +6,10 @@ MainRobot:
 #   module: Panda2LIRMMDefault::TAA::Tibia
 #   name: panda_femur
 
+MainRobot:
+  module: Panda2LIRMMDefault::TSA::Glenoid
+  name: tsa_glenoid
+
 # MainRobot: UR10::BoneTag::Femur
 Enabled: PandaProsthesis
 Timestep: 0.001

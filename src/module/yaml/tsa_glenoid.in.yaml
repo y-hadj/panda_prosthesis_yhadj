@@ -1,0 +1,6 @@
+# Location of data files, all path in the YAML file are
+# interpreted relative to this path unless they are absolute paths
+path: "@MODULE_INSTALL_LOCATION@"
+name: tsa_glenoid
+urdf_path: urdf/tsa_glenoid.urdf
+fixed: true
