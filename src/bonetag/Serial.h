@@ -209,7 +209,7 @@ struct Serial
 
     thread_ = std::thread(&Serial::runThread, this);
   };
-  virtual ~Serial() = 0;
+  // virtual ~Serial() = 0;
 
   void runThread()
   {

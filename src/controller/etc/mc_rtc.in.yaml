@@ -1,14 +1,14 @@
-# MainRobot:
-#   module: Panda2LIRMMDefault::BoneTag::Femur
-#   name: panda_femur
+MainRobot:
+  module: Panda2LIRMMDefault::BoneTag::Femur
+  name: panda_femur
 
 # MainRobot:
 #   module: Panda2LIRMMDefault::TAA::Tibia
 #   name: panda_femur
 
-MainRobot:
-  module: Panda2LIRMMDefault::TSA::Glenoid
-  name: panda_femur
+# MainRobot:
+#   module: Panda2LIRMMDefault::TSA::Glenoid
+#   name: panda_femur
 
 # MainRobot:
 #   module: Panda7LIRMMDefault::TSA::Humerus
