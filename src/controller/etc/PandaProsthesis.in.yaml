@@ -125,8 +125,7 @@ states:
       - ["Load Saved Calibration", "LoadSavedCalibration"]
       - ["Start from current configuration", "StartFromCurrent"]
 
-# Plugins: [BoneTagSerialPlugin]
-Plugins: []
+Plugins: [BoneTagSerialPlugin]
 
 transitions:
   - [ChooseMode, Simulation, Simulation, Auto]
