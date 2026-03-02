@@ -10,7 +10,7 @@ InitializePandaFemur:
     rotation: [0, 0, 0]
 
 InitializePandaTibia:
-  base: InitializePandaTibia
+  base: InitializePandaFemur
   robot: panda_tibia
   frame: Tibia
   showInstructions: false
