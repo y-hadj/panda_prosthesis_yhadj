@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mc_rtc/clock.h>
+#include <mc_rtc/logging.h>
 #include <atomic>
 #include <mutex>
 #include <string>
@@ -213,7 +214,16 @@ struct Serial
 
   void runThread()
   {
-    open_serial_port();
+    try
+    {
+      open_serial_port();
+    }
+    catch(std::runtime_error & e)
+    {
+      mc_rtc::log::error("[Serial] Failed to open serial port {}, sensor values will not be available\nDetails: {}",
+                         portName, e.what());
+      return;
+    }
 
     const auto period = std::chrono::milliseconds(1); // 1000Hz = 1ms period
 
