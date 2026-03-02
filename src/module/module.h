@@ -32,8 +32,8 @@ static void ForAllVariants(Callback cb)
   // creates panda_taa_tibia
   cb(ConnectRobot{"Panda2LIRMMDefault", "panda", "panda_link8"},
      ConnectTool{"TSA::Glenoid", "tsa_glenoid", "base_link"});
-  // creates panda_taa_talar
-  cb(ConnectRobot{"Panda7LIRMMDefault", "panda", "panda_link8"}, ConnectTool{"TAA::Talar", "taa_talar", "taa_talar"});
+  // creates panda_tsa_humerus
+  cb(ConnectRobot{"Panda7LIRMMDefault", "panda", "panda_link8"}, ConnectTool{"TSA::Humerus", "tsa_humerus", "base_link"});
   for(auto & robot : std::vector<ConnectRobot>{{"UR10", "panda", "wrist_3_link"}})
   {
     for(auto & tool : std::vector<ConnectTool>{{"BoneTag::Femur", "femur", "femur_base_link"},

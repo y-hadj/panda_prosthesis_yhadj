@@ -24,6 +24,8 @@ add_yaml_module(bonetag_knee_brace)
 add_yaml_module(taa_talar)
 add_yaml_module(taa_tibia)
 add_yaml_module(tsa_glenoid)
+add_yaml_module(tsa_humerus)
+
 
 
 add_robot(PandaProsthesisModule module.cpp module.h)

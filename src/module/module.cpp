@@ -38,7 +38,7 @@ extern "C"
               const double s = 0.005;
               const double d = 0.;
               auto & c = connect_rm->_minimalSelfCollisions;
-              if(tool.name == "tsa_glenoid" || tool.name == "taa_talar")
+              if(tool.name == "tsa_glenoid" || tool.name == "tsa_humerus")
               {
               }
               else
