@@ -20,3 +20,10 @@ frames:
     X_p_f:
       translation: [0, 0, 0.282] # FIXME
       rotation: [0, 0, 0.3] # FIXME
+  - name: TibiaTest
+    parent: base_link
+    # plastic support 0.215
+    # metal prosthesis 0.1
+    X_p_f:
+      translation: [0, 0, 0.282] # FIXME
+      rotation: [0, 0, 0.3] # FIXME
