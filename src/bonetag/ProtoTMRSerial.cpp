@@ -207,7 +207,7 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
   auto sensorId = numbers[0];
   if(sensorId == 0)
   { // Frame start found
-    mc_rtc::log::success("Found frame start");
+    // mc_rtc::log::success("Found frame start");
     currentSensorFrame_.startFrame();
   }
 
@@ -236,7 +236,7 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
     }
     gotFullFrame_ = true;
     frameUpdated_ = true;
-    mc_rtc::log::success("Full frame received and updated");
+    // mc_rtc::log::success("Full frame received and updated");
   }
 }
 

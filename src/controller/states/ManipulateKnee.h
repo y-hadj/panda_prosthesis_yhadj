@@ -40,14 +40,10 @@ struct Result
 
   // Sensor measurements
   io::Serial::TimedRawData sensorData;
-
-  std::string to_csv() const;
 };
 
 struct ResultHandler
 {
-  void write_csv(const std::string & path);
-
   void clear()
   {
     results_.clear();
@@ -58,9 +54,17 @@ struct ResultHandler
     results_.push_back(result);
   }
 
+  inline const std::vector<Result> results() const noexcept
+  {
+    return results_;
+  }
+
 protected:
   std::vector<Result> results_;
 };
+
+void write_csv_bonetag();
+void write_csv_prototmr();
 
 struct ManipulateKnee : mc_control::fsm::State
 {
@@ -92,11 +96,7 @@ protected:
     trajOffsets_.reset();
   }
 
-  void saveResults(bool clear = true)
-  {
-    results_.write_csv(resultPath_);
-    results_.clear();
-  }
+  void saveResults(bool clear = true);
 
   inline void forceNext() noexcept
   {
@@ -144,6 +144,7 @@ protected:
   bool next_ = true;
   bool hasConverged_ = false;
   bool gotMeasurement_ = false;
+  std::string sensorType = "None";
   size_t iter_ = 0;
   size_t iterRate_ = 1;
   double translationTreshold_ = 0.1; ///< Convergence threshold on translation [mm]

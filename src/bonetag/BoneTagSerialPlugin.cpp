@@ -55,6 +55,8 @@ void BoneTagSerialPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc
   config("verbose", verbose_);
 
   gc.controller().datastore().make<bool>("BoneTagSerialPlugin", true);
+  gc.controller().datastore().make_call("BoneTagSerialPlugin::SensorType",
+                                        [sensor]() -> std::string { return sensor; });
   gc.controller().datastore().make_call("BoneTagSerialPlugin::Connected", [this]() { return serial_->connected(); });
   gc.controller().datastore().make_call("BoneTagSerialPlugin::RequestNewFrame",
                                         [this]() { return serial_->requestNewFrame(); });
