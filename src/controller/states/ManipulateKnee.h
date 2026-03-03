@@ -142,6 +142,8 @@ protected:
   bool play_ = false;
   bool manualLogging_ = false;
   bool next_ = true;
+  bool hasConverged_ = false;
+  bool gotMeasurement_ = false;
   size_t iter_ = 0;
   size_t iterRate_ = 1;
   double translationTreshold_ = 0.1; ///< Convergence threshold on translation [mm]
@@ -149,7 +151,7 @@ protected:
 
   unsigned desiredSamples_ = 1;
   unsigned measuredSamples_ = 0;
-  bool firstMeasure_ = true;
+  bool newFrameRequested_ = false;
 
   ResultHandler results_;
   std::string results_dir_ = "/tmp";

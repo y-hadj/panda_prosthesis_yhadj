@@ -575,27 +575,45 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
     return false;
   }
 
-  auto sensorData =
-      ctl.datastore().call<std::optional<io::Serial::TimedRawData>>("BoneTagSerialPlugin::GetNewTimedRawData");
-  if(sensorData)
+  if(!newFrameRequested_)
   {
-    if(firstMeasure_)
-    {
-      mc_rtc::log::info("Skipping first measurement");
-      firstMeasure_ = false;
-      return false;
-    }
-    Result result;
-    result.controllerIter = controllerIter_;
-    result.femurRotation = femurRotationActual_;
-    result.femurTranslation = femurTranslationActual_;
-    result.tibiaRotation = tibiaRotationActual_;
-    result.tibiaTranslation = tibiaTranslationActual_;
-    result.sensorData = *sensorData;
-    results_.addResult(result);
-    mc_rtc::log::info("Got new data between t={}[s] and t={}[s]", result.sensorData.start_time_ms.count() / 1000,
-                      result.sensorData.end_time_ms.count() / 1000);
-    ++measuredSamples_;
+    ctl.datastore().call("BoneTagSerialPlugin::RequestNewFrame");
+    mc_rtc::log::info("[{}] Requested new sensor data frame", name());
+    newFrameRequested_ = true;
+  }
+
+  // Check until we got a new frame
+  if(!ctl.datastore().call<bool>("BoneTagSerialPlugin::GotNewFrame"))
+  {
+    // mc_rtc::log::info("[{}] Waiting for new sensor data frame...", name());
+    return false;
+  }
+
+  // We got a new frame
+  auto sensorData = ctl.datastore().call<io::Serial::TimedRawData>("BoneTagSerialPlugin::GetLastFrame");
+  mc_rtc::log::success("[{}] Got new sensor data frame:", name());
+  for(unsigned i = 0; i < sensorData.data.size(); ++i)
+  {
+    mc_rtc::log::info("Sensor[{}]: {}", i, mc_rtc::io::to_string(sensorData.data[i]));
+  }
+
+  Result result;
+  result.controllerIter = controllerIter_;
+  result.femurRotation = femurRotationActual_;
+  result.femurTranslation = femurTranslationActual_;
+  result.tibiaRotation = tibiaRotationActual_;
+  result.tibiaTranslation = tibiaTranslationActual_;
+  result.sensorData = std::move(sensorData);
+  results_.addResult(result);
+  mc_rtc::log::info("Got new data between t={}[s] and t={}[s]", result.sensorData.start_time_ms.count() / 1000,
+                    result.sensorData.end_time_ms.count() / 1000);
+  ++measuredSamples_;
+
+  newFrameRequested_ = false;
+
+  if(measuredSamples_ == desiredSamples_)
+  {
+    mc_rtc::log::success("Measurement done! Got {} samples as requested", measuredSamples_);
   }
   return measuredSamples_ == desiredSamples_;
 }
@@ -663,25 +681,55 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
       iter_ = 0;
       measuredSamples_ = 0;
       next_ = false;
-      firstMeasure_ = true;
     }
     else
     {
-      bool hasConverged = false;
-      if(!continuous_)
+      if(!continuous_ && !hasConverged_)
       {
         const auto & tibia_error = tibiaError_;
         const auto & femur_error = femurError_;
-        hasConverged = (tibia_error.angular().norm() <= mc_rtc::constants::toRad(rotationTreshold_)
-                        && tibia_error.linear().norm() <= translationTreshold_ / 1000.
-                        && femur_error.angular().norm() <= mc_rtc::constants::toRad(rotationTreshold_)
-                        && femur_error.linear().norm() <= translationTreshold_ / 1000.);
+        hasConverged_ = (tibia_error.angular().norm() <= mc_rtc::constants::toRad(rotationTreshold_)
+                         && tibia_error.linear().norm() <= translationTreshold_ / 1000.
+                         && femur_error.angular().norm() <= mc_rtc::constants::toRad(rotationTreshold_)
+                         && femur_error.linear().norm() <= translationTreshold_ / 1000.);
+        if(hasConverged_)
+        {
+          mc_rtc::log::success(
+              "Convergence criteria met at iteration {}: Tibia error (angular: {:.2f} deg, linear: {:.2f} mm), Femur "
+              "error (angular: {:.2f} deg, linear: {:.2f} mm)",
+              iter_, tibia_error.angular().norm() * 180 / mc_rtc::constants::PI, tibia_error.linear().norm() * 1000,
+              femur_error.angular().norm() * 180 / mc_rtc::constants::PI, femur_error.linear().norm() * 1000);
+        }
       }
       else
       { // Ignore convergence criteria when running continous trajectories
-        hasConverged = true;
+        hasConverged_ = true;
       }
-      next_ = hasConverged && iter_ >= iterRate_ && measure(ctl);
+
+      if(hasConverged_)
+      { // We have converged to a waypoint
+        if(!gotMeasurement_)
+        { // But have not yet measured a sensor frame, request a new full frame
+          // gotMeasurement_ will be set to true once we got the new frame, then we will wait until iterRate_ has been
+          // reached before going to the next waypoint
+          gotMeasurement_ = measure(ctl);
+          if(gotMeasurement_)
+          {
+            mc_rtc::log::success("Got measurement for waypoint at iteration {}, waiting until iter({})>=iterRate({})",
+                                 iter_, iter_, iterRate_);
+          }
+        }
+        else
+        { // We got the measurement, now we wait until iterRate
+          if(iter_ >= iterRate_)
+          {
+            mc_rtc::log::info("Waypoint handled successfully, remaining: {}", file_.tibiaRotationVector.size() - 1);
+            gotMeasurement_ = false;
+            hasConverged_ = false;
+            next_ = true;
+          }
+        }
+      }
     }
   }
 

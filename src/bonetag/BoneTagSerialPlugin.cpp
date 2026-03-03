@@ -60,7 +60,7 @@ void BoneTagSerialPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc
                                         [this]() { return serial_->requestNewFrame(); });
   gc.controller().datastore().make_call("BoneTagSerialPlugin::GotNewFrame",
                                         [this]() { return serial_->gotFullFrame(); });
-  gc.controller().datastore().make_call("BoneTagSerialPlugin::GetLastData",
+  gc.controller().datastore().make_call("BoneTagSerialPlugin::GetLastFrame",
                                         [this]() { return serial_->getLastFrame(); });
   gc.controller().datastore().make_call("BoneTagSerialPlugin::Stop", [this]() -> void { running_ = false; });
   // std::vector<std::string> label;

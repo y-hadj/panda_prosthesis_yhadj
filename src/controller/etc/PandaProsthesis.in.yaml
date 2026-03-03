@@ -52,10 +52,10 @@ robots:
       lower_force_thresholds: [-100, -100, -100, -100, -100, -100]
       upper_force_thresholds: [100, 100, 100, 100, 100, 100]
   panda_tibia:
-    # module: Panda7LIRMMDefault::BoneTag::Tibia
+    module: Panda7LIRMMDefault::BoneTag::Tibia
     # module: Panda7LIRMMDefault::TAA::Talar
     # module: Panda7LIRMMDefault::TSA::Glenoid
-    module: Panda7LIRMMDefault::TSA::Humerus
+    # module: Panda7LIRMMDefault::TSA::Humerus
     # module: UR10::BoneTag::Tibia
     CollisionBehavior:
       # See panda_femur for details

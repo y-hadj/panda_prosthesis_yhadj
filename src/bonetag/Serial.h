@@ -4,6 +4,7 @@
 #include <mc_rtc/logging.h>
 #include <atomic>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <termios.h>
 #include <thread>
@@ -215,8 +216,8 @@ struct Serial
   size_t SENSOR_COUNT = 32;
   std::chrono::time_point<mc_rtc::clock> start_time_;
 
-  using Data = std::vector<uint16_t>;
-  using RawData = std::vector<std::vector<uint16_t>>;
+  using Data = std::vector<uint64_t>;
+  using RawData = std::vector<std::vector<uint64_t>>;
 
   using TimedFilteredData = TimedData<Data>;
   using TimedRawData = TimedData<RawData>;

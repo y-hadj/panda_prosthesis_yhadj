@@ -13,8 +13,10 @@ namespace io
 static unsigned char buffer[BUFFER_SIZE];
 
 // 23 sensors
+// 10 timestamps per sensor
 // 10 readings per sensor
-ProtoTMRSerial::ProtoTMRSerial(const std::string & portName, const int baudRate) : Serial(portName, baudRate, 23, 10)
+ProtoTMRSerial::ProtoTMRSerial(const std::string & portName, const int baudRate)
+: Serial(portName, baudRate, 23, 10 + 10)
 {
   avg_buffer.resize(SENSOR_COUNT, 0);
 }
@@ -158,87 +160,6 @@ bool ProtoTMRSerial::validate_data(Data & raw_data)
   return true;
 }
 
-// void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
-// {
-//   // data is organized as follow
-//   // - 0: id
-//   // - 1-20: timestamp with two-bytes per timestamp, both bytes should be recombined (fort/failble)
-//   // - 21-30
-//   //
-//   // example data is (single line):
-//   // 21,
-//   // 1,133124959,838,1,133124995,850,1,133125031,852,1,133125067,848,1,133125104,852,1,133125140,849,1,133125176,
-//   // 847,1,133125212,848,1,133125249,848,1,133125285,857
-//
-//   std::string line(reinterpret_cast<char *>(buff), buff_len);
-//
-//   // mc_rtc::log::info("t={}, parse buffer got line: {}",
-//   // std::chrono::duration_cast<mc_rtc::duration_ms>(mc_rtc::clock::now().time_since_epoch()).count(), line);
-//
-//   // // N+1 values for a sensor : sensor id, value1, value2, ...
-//   auto numbers = std::vector<uint16_t>{};
-//   std::stringstream ss(line);
-//   std::string item;
-//
-//   rawDataBuffer_.setCurrentTime();
-//
-//   while(std::getline(ss, item, ','))
-//   {
-//     if(item.empty()) continue;
-//     try
-//     {
-//       numbers.emplace_back(static_cast<uint16_t>(std::stoi(item)));
-//     }
-//     catch(const std::exception &)
-//     {
-//       // Ignore parse errors
-//     }
-//   }
-//
-//   mc_rtc::log::info("{}, size: {}", line, numbers.size());
-//
-//   // mc_rtc::log::info("numbers size: {}" , numbers.size());
-//
-//   // if(numbers.size() < 11)
-//   // {
-//   //   mc_rtc::log::warning("wrong sensor size, got {} expected 11", numbers.size());
-//   //   return;
-//   // }
-//   // else
-//   // {
-//   //   // mc_rtc::log::info("got {}", mc_rtc::io::to_string(numbers));
-//   // }
-//
-//   // auto sensorId = numbers[0];
-//   // std::copy(numbers.begin() + 1, numbers.end(), rawDataBuffer_.data[sensorId].begin());
-//
-//   // uint32_t sum = 0;
-//   // for(size_t i = 1; i < numbers.size(); ++i)
-//   // {
-//   //   sum += numbers[i];
-//   // }
-//   // uint16_t avg = static_cast<uint16_t>(sum / (numbers.size() - 1));
-//   // avg_buffer[sensorId] = avg;
-//
-//   // // std::cout << "Sensor index: " << sensor_index << ", Average: " << avg << std::endl;
-//
-//   // // Only lock and copy when the last sensor is processed
-//   // if(sensorId == SENSOR_COUNT - 1)
-//   // {
-//   //   {
-//   //     std::lock_guard<std::mutex> lock{raw_data_mutex};
-//   //     currentRawData_ = rawDataBuffer_;
-//   //     rawDataUpdated_ = true;
-//   //   }
-//   //   {
-//   //     std::lock_guard<std::mutex> lock(last_received_data_mutex);
-//   //     last_received_data = avg_buffer;
-//   //   }
-//   //   // std::cout << "All sensor averages updated at t=" << rawDataBuffer_.timestamp_ms.count() / 1000. << "s" <<
-//   //   // std::endl;
-//   // }
-// }
-
 // data is organized as follow
 // - 0: id
 // - 1-20: timestamp with two-bytes per timestamp, both bytes should be recombined (fort/failble)
@@ -252,13 +173,13 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
 {
   if(buff_len == 0)
   {
-    mc_rtc::log::info("Empty buffer received, start reading new sensors");
+    // mc_rtc::log::info("Empty buffer received, start reading new sensors");
     return;
   }
 
-  mc_rtc::log::info("Parsing buffer of size {}", buff_len);
+  // mc_rtc::log::info("Parsing buffer of size {}", buff_len);
   std::string line(reinterpret_cast<char *>(buff), buff_len);
-  mc_rtc::log::info("parse buffer got line: {}", line);
+  // mc_rtc::log::info("parse buffer got line: {}", line);
   auto numbers = std::vector<uint64_t>{};
   // numbers.reserve(31); // Reserve space for 31 numbers to avoid reallocations
   std::stringstream ss(line);
@@ -275,7 +196,7 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
       mc_rtc::log::warning("Failed to parse item '{}' as integer, skipping", item);
     }
   }
-  mc_rtc::log::info("size: {}, line: {}", numbers.size(), line);
+  // mc_rtc::log::info("size: {}, line: {}", numbers.size(), line);
   if(numbers.size() != 31)
   {
     mc_rtc::log::warning("wrong sensor size, got {} expected at least 31", numbers.size());
@@ -299,7 +220,7 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
     numbers_t.push_back(ts);
   }
   std::copy(numbers.begin() + 21, numbers.end(), std::back_inserter(numbers_t));
-  mc_rtc::log::info("size: {}, numbers_t: {}", numbers_t.size(), mc_rtc::io::to_string(numbers_t));
+  // mc_rtc::log::info("size: {}, numbers_t: {}", numbers_t.size(), mc_rtc::io::to_string(numbers_t));
 
   // copy to the full frame
   std::copy(numbers_t.begin(), numbers_t.end(), currentSensorFrame_.data[sensorId].begin());
@@ -308,13 +229,14 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
   { // last sensor, frame is complete
     currentSensorFrame_.finalizeFrame();
 
-    // update lastSensorFrame_
+    // update lastSensorFrame
     {
       // std::lock_guard<std::mutex> lock{frameMutex_};
       lastSensorFrame_ = currentSensorFrame_;
     }
     gotFullFrame_ = true;
     frameUpdated_ = true;
+    mc_rtc::log::success("Full frame received and updated");
   }
 }
 
