@@ -12,7 +12,9 @@ namespace io
 #define BUFFER_SIZE 256
 static unsigned char buffer[BUFFER_SIZE];
 
-ProtoTMRSerial::ProtoTMRSerial(const std::string & portName, const int baudRate) : Serial(portName, baudRate, 31, 10)
+// 23 sensors
+// 10 readings per sensor
+ProtoTMRSerial::ProtoTMRSerial(const std::string & portName, const int baudRate) : Serial(portName, baudRate, 23, 10)
 {
   avg_buffer.resize(SENSOR_COUNT, 0);
 }
@@ -237,6 +239,15 @@ bool ProtoTMRSerial::validate_data(Data & raw_data)
 //   // }
 // }
 
+// data is organized as follow
+// - 0: id
+// - 1-20: timestamp with two-bytes per timestamp, both bytes should be recombined (fort/failble)
+// - 21-30
+//
+// example data is (single line):
+// 21,
+// 1,133124959,838,1,133124995,850,1,133125031,852,1,133125067,848,1,133125104,852,1,133125140,849,1,133125176,
+// 847,1,133125212,848,1,133125249,848,1,133125285,857
 void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
 {
   if(buff_len == 0)
@@ -273,17 +284,13 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
   }
 
   auto sensorId = numbers[0];
+  if(sensorId == 0)
+  { // Frame start found
+    mc_rtc::log::success("Found frame start");
+    currentSensorFrame_.startFrame();
+  }
 
   // Now convert the timestamps
-  // data is organized as follow
-  // - 0: id
-  // - 1-20: timestamp with two-bytes per timestamp, both bytes should be recombined (fort/failble)
-  // - 21-30
-  //
-  // example data is (single line):
-  // 21,
-  // 1,133124959,838,1,133124995,850,1,133125031,852,1,133125067,848,1,133125104,852,1,133125140,849,1,133125176,
-  // 847,1,133125212,848,1,133125249,848,1,133125285,857
   auto numbers_t = std::vector<uint64_t>{};
   numbers_t.reserve(20); // Reserve space for 20 numbers to avoid reallocations
   for(size_t i = 0; i < 10; ++i)
@@ -295,21 +302,19 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
   mc_rtc::log::info("size: {}, numbers_t: {}", numbers_t.size(), mc_rtc::io::to_string(numbers_t));
 
   // copy to the full frame
-  std::copy(numbers_t.begin(), numbers_t.end(), rawDataBuffer_.data[sensorId].begin());
+  std::copy(numbers_t.begin(), numbers_t.end(), currentSensorFrame_.data[sensorId].begin());
 
-  auto frameStartFound = (sensorId == 0);
-  if(sensorId == 0)
-  {
-    mc_rtc::log::success("Found frame start");
-    // swap currentFrame with lastFrame
-    rawDataBuffer_.setCurrentTime();
-    // lastRawData_ = rawDataBuffer_
-  }
-  else if(sensorId == 22)
+  if(sensorId == 22)
   { // last sensor, frame is complete
+    currentSensorFrame_.finalizeFrame();
 
-    // rawDataBuffer_ now contains all sensor readings
-    // gotFullFrame_ = true;
+    // update lastSensorFrame_
+    {
+      // std::lock_guard<std::mutex> lock{frameMutex_};
+      lastSensorFrame_ = currentSensorFrame_;
+    }
+    gotFullFrame_ = true;
+    frameUpdated_ = true;
   }
 }
 

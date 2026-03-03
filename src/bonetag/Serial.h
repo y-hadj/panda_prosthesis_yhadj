@@ -158,10 +158,10 @@ struct TimedData
 {
   using SensorDataT = typename DataT::value_type;
   TimedData() {}
-  TimedData(std::chrono::time_point<mc_rtc::clock> initial_time,
-            unsigned int sensor_count,
-            unsigned int meaurementsPerSensor)
-  : timestamp_ms(0.0), initial_time(initial_time), data{}
+  TimedData(unsigned int sensor_count,
+            unsigned int meaurementsPerSensor,
+            std::chrono::time_point<mc_rtc::clock> initial_time = mc_rtc::clock::now())
+  : start_time_ms(0.0), end_time_ms(0.0), initial_time(initial_time), data{}
   {
     data.resize(sensor_count);
     for(auto & sensor_data : data)
@@ -170,21 +170,44 @@ struct TimedData
     }
   }
 
-  void setCurrentTime()
+  /**
+   * \brief Reset the initial time to the current time, that is the time at which the first measurement was started
+   */
+  void resetInitialTime()
+  {
+    initial_time = mc_rtc::clock::now();
+  };
+
+  /**
+   * \brief Set the start time of the current frame to the current time
+   */
+  void startFrame()
   {
     auto now = mc_rtc::clock::now();
-    timestamp_ms = std::chrono::duration_cast<mc_rtc::duration_ms>(now - initial_time);
+    start_time_ms = std::chrono::duration_cast<mc_rtc::duration_ms>(now - initial_time);
   }
 
+  /**
+   * \brief Set the end time of the current frame to the current time and compute the duration of the frame
+   */
+  void finalizeFrame()
+  {
+    auto now = mc_rtc::clock::now();
+    end_time_ms = std::chrono::duration_cast<mc_rtc::duration_ms>(now - initial_time);
+  }
+
+  /**
+   * Moves a full frame data
+   */
   TimedData(DataT && data)
   {
-    setCurrentTime();
     this->data = std::move(data);
   }
 
-  mc_rtc::duration_ms timestamp_ms{0.0};
-  std::chrono::time_point<mc_rtc::clock> initial_time;
-  DataT data;
+  mc_rtc::duration_ms start_time_ms{0.0}; /// time at which the first sensor in the current frame began reading
+  mc_rtc::duration_ms end_time_ms{0.0}; /// time at which the last sensor in the current frame finished reading
+  std::chrono::time_point<mc_rtc::clock> initial_time; /// time at which the first measurement was started
+  DataT data; /// sensor data for a full frame
 };
 
 struct Serial
@@ -203,14 +226,83 @@ struct Serial
 
   Serial(const std::string & portName, const int baudRate, size_t sensor_count, size_t meaurementsPerSensor)
   : SENSOR_COUNT(sensor_count), start_time_(mc_rtc::clock::now()),
-    rawDataBuffer_(start_time_, sensor_count, meaurementsPerSensor),
-    currentRawData_(start_time_, sensor_count, meaurementsPerSensor), portName(portName), baudRate(baudRate)
+    lastSensorFrame_(sensor_count, meaurementsPerSensor, start_time_), currentSensorFrame_(lastSensorFrame_),
+    portName(portName), baudRate(baudRate)
   {
-    last_received_data.resize(SENSOR_COUNT, 0);
-
     thread_ = std::thread(&Serial::runThread, this);
   };
-  // virtual ~Serial() = 0;
+
+  virtual void open_serial_port() = 0;
+  virtual void close_serial_port() = 0;
+  virtual bool connected() = 0;
+  virtual void read_serial_port() = 0;
+
+  inline bool lastFrameUpdated() const noexcept
+  {
+    return frameUpdated_;
+  }
+
+  /**
+   * \brief Request a new frame. You must wait until gotFullFrame() = true to have the new full sensor frame
+   */
+  void requestNewFrame()
+  {
+    gotFullFrame_ = false;
+  }
+
+  /**
+   * \bried True after a full frame has been received:
+   * - if you called requestNewFrame(): this is true when the next full frame has been received
+   * - otherwise it always true after the first full sensor frame has been received
+   **/
+  inline bool gotFullFrame() const noexcept
+  {
+    return gotFullFrame_;
+  }
+
+  /**
+   * \brief True if the frame has changed since the last call to getLastFrame()
+   */
+  inline bool frameUpdated() const noexcept
+  {
+    return frameUpdated_;
+  }
+
+  /**
+   * \brief Get the last full sensor frame that has been received.
+   * Call frameUpdated() beforehand to check if the frame has changed since the last call to this function.
+   */
+  TimedRawData getLastFrame() const
+  {
+    frameUpdated_ = false;
+    // std::lock_guard<std::mutex> lock(frameMutex_);
+    return lastSensorFrame_;
+  }
+
+protected: /* Serial stream processing */
+  virtual void parse_buffer(unsigned char * buff, size_t buff_len) = 0;
+  virtual void apply_filter(RawData & raw_data) = 0;
+  virtual bool validate_data(Data & data) = 0;
+
+protected: /* Sensor data */
+  // processed in a thread, do not use outside
+  // all received raw data since we last read it with popRawData()
+
+  /**
+   * Frame synchronization mutex. Derived classes must lock it before writing into lastSensorFrame_
+   */
+  mutable std::mutex frameMutex_;
+  TimedRawData lastSensorFrame_; /// last available full sensor frame
+  TimedRawData currentSensorFrame_; /// current sensor frame being processed (incomplete). No locking required as it is
+                                    /// never read outside of the thread
+
+  std::atomic<bool> gotFullFrame_{false}; /// True when we got the next full frame
+  mutable std::atomic<bool> frameUpdated_{
+      false}; /// whether the frame has changed since the last call to getLastFrame()
+
+protected: /* Serial stream thread */
+  std::thread thread_;
+  bool isConnected = false;
 
   void runThread()
   {
@@ -245,57 +337,6 @@ struct Serial
     close_serial_port();
   }
 
-  virtual void open_serial_port() = 0;
-  virtual void close_serial_port() = 0;
-  virtual bool connected() = 0;
-  virtual void read_serial_port() = 0;
-  bool isConnected = false;
-
-  // processed in a thread, do not use outside
-
-  // all received raw data since we last read it with popRawData()
-  mutable std::mutex raw_data_mutex;
-  TimedRawData rawDataBuffer_;
-  TimedRawData currentRawData_;
-  std::atomic<bool> rawDataUpdated_{false};
-
-  bool lastRawDataUpdated()
-  {
-    return rawDataUpdated_;
-  }
-
-  TimedRawData readLastRawData()
-  {
-    rawDataUpdated_ = false;
-    std::lock_guard<std::mutex> lock(raw_data_mutex);
-    return currentRawData_;
-  }
-
-  TimedRawData lastRawData() const
-  {
-    std::lock_guard<std::mutex> lock(raw_data_mutex);
-    return currentRawData_;
-  }
-
-  std::vector<TimedRawData> rawData_;
-  std::vector<TimedRawData> popRawData()
-  {
-    std::lock_guard<std::mutex> lock(raw_data_mutex);
-    return rawData_;
-  }
-
-  std::mutex received_data_mutex;
-  std::vector<Data> received_data;
-
-  mutable std::mutex last_received_data_mutex;
-  io::Serial::Data last_received_data; // used for filtering
-
-  Data lastReceivedData() const
-  {
-    std::lock_guard<std::mutex> lock(last_received_data_mutex);
-    return last_received_data;
-  }
-
   int cycles_waited = 0;
   int cycles_timeout = 5000;
   bool serial_status = false;
@@ -312,13 +353,6 @@ struct Serial
   {
     alphaFilter_ = a;
   }
-
-protected:
-  virtual void parse_buffer(unsigned char * buff, size_t buff_len) = 0;
-  virtual void apply_filter(RawData & raw_data) = 0;
-  virtual bool validate_data(Data & data) = 0;
-
-  std::thread thread_;
 
 protected:
   int serialPort;

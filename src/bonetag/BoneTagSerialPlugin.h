@@ -46,7 +46,7 @@ protected:
   std::mutex dataMutex_;
 
   io::Serial::Data data_;
-  io::Serial::Data lastData_;
+  io::Serial::TimedRawData lastData_;
   double t_ = 0;
   bool plotDisplayed = false;
 

@@ -50,76 +50,49 @@ void BoneTagSerialPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc
   }
 
   data_.assign(serial_->SENSOR_COUNT, 0);
-  lastData_ = data_;
+  // lastData_ = data_;
 
   config("verbose", verbose_);
 
   gc.controller().datastore().make<bool>("BoneTagSerialPlugin", true);
   gc.controller().datastore().make_call("BoneTagSerialPlugin::Connected", [this]() { return serial_->connected(); });
+  gc.controller().datastore().make_call("BoneTagSerialPlugin::RequestNewFrame",
+                                        [this]() { return serial_->requestNewFrame(); });
+  gc.controller().datastore().make_call("BoneTagSerialPlugin::GotNewFrame",
+                                        [this]() { return serial_->gotFullFrame(); });
   gc.controller().datastore().make_call("BoneTagSerialPlugin::GetLastData",
-                                        [this]() -> const io::Serial::Data &
-                                        {
-                                          std::lock_guard<std::mutex> lockDataMutex(dataMutex_);
-                                          return lastData_;
-                                        });
-  gc.controller().datastore().make_call("BoneTagSerialPlugin::GetNewData",
-                                        [this]() -> std::optional<io::Serial::Data>
-                                        {
-                                          // std::lock_guard<std::mutex> lockDataMutex(dataMutex_);
-                                          if(lastDataIsNew_)
-                                          {
-                                            lastDataIsNew_ = false;
-                                            return lastData_;
-                                          }
-                                          else
-                                          {
-                                            return std::nullopt;
-                                          }
-                                        });
-  gc.controller().datastore().make_call("BoneTagSerialPlugin::GetTimedRawData",
-                                        [this]() -> io::Serial::TimedRawData { return serial_->lastRawData(); });
-  gc.controller().datastore().make_call("BoneTagSerialPlugin::GetNewTimedRawData",
-                                        [this]() -> std::optional<io::Serial::TimedRawData>
-                                        {
-                                          if(serial_->lastRawDataUpdated())
-                                          {
-                                            return serial_->readLastRawData();
-                                          }
-                                          else
-                                          {
-                                            return std::nullopt;
-                                          }
-                                        });
+                                        [this]() { return serial_->getLastFrame(); });
   gc.controller().datastore().make_call("BoneTagSerialPlugin::Stop", [this]() -> void { running_ = false; });
-  std::vector<std::string> label;
-  {
-    std::lock_guard<std::mutex> lockDataMutex(dataMutex_);
+  // std::vector<std::string> label;
+  // {
+  //   std::lock_guard<std::mutex> lockDataMutex(dataMutex_);
+  //
+  //   label.resize(lastData_.size());
+  //   for(int i = 0; i < lastData_.size(); ++i)
+  //   {
+  //     label[i] = std::to_string(i);
+  //   }
+  // }
 
-    label.resize(lastData_.size());
-    for(int i = 0; i < lastData_.size(); ++i)
-    {
-      label[i] = std::to_string(i);
-    }
-  }
-
-  gc.controller().gui()->addElement(
-      {"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::Label("Connected", [this]() { return serial_->connected(); }),
-      mc_rtc::gui::Button("Connect", [this]() { connect_requested_ = true; }),
-      mc_rtc::gui::ArrayLabel("Data", label,
-                              [this]()
-                              {
-                                std::lock_guard<std::mutex> lockDataMutex(dataMutex_);
-                                return lastData_;
-                              }),
-      mc_rtc::gui::NumberInput(
-          "Alpha Filter", [this]() { return serial_->alphaFilter(); }, [this](double a) { serial_->alphaFilter(a); }),
-
-      mc_rtc::gui::Button("Stop",
-                          [this]()
-                          {
-                            running_ = false;
-                            thread_.join();
-                          }));
+  // gc.controller().gui()->addElement(
+  //     {"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::Label("Connected", [this]() { return serial_->connected(); }),
+  //     mc_rtc::gui::Button("Connect", [this]() { connect_requested_ = true; }),
+  //     mc_rtc::gui::ArrayLabel("Data", label,
+  //                             [this]()
+  //                             {
+  //                               std::lock_guard<std::mutex> lockDataMutex(dataMutex_);
+  //                               return lastData_;
+  //                             }),
+  //     // mc_rtc::gui::NumberInput(
+  //     //     "Alpha Filter", [this]() { return serial_->alphaFilter(); }, [this](double a) { serial_->alphaFilter(a);
+  //     }),
+  //     //
+  //     mc_rtc::gui::Button("Stop",
+  //                         [this]()
+  //                         {
+  //                           running_ = false;
+  //                           thread_.join();
+  //                         }));
 }
 
 void BoneTagSerialPlugin::reset(mc_control::MCGlobalController & controller) {}
@@ -128,15 +101,12 @@ void BoneTagSerialPlugin::before(mc_control::MCGlobalController & gc)
 {
   if(!serial_) return;
 
-  std::lock_guard<std::mutex> lockReceivedDataMutex(serial_->received_data_mutex);
-
   // all_data.insert(all_data.end(),serial_->received_data.begin(),serial_->received_data.end());
-  auto lastReceivedData = serial_->lastReceivedData();
-  hasReceivedData_ = !lastReceivedData.empty();
+  hasReceivedData_ = !serial_->lastFrameUpdated();
 
   if(hasReceivedData_)
   {
-    lastData_ = lastReceivedData;
+    lastData_ = serial_->getLastFrame();
     lastDataIsNew_ = true;
 
     if(!plotDisplayed)
@@ -167,55 +137,51 @@ void BoneTagSerialPlugin::before(mc_control::MCGlobalController & gc)
           {Color(0.2, 0.2, 0.6), Style::Dashed} // Navy Dashed
       };
 
-      auto make_sensor_plot = [this, sensorColors](unsigned index)
-      {
-        const auto & colorStyle = sensorColors[index % sensorColors.size()];
-        return mc_rtc::gui::plot::Y(
-            fmt::format("Sensor {}", index), [this, index]() { return lastData_[index]; }, colorStyle.first,
-            colorStyle.second);
-      };
+      // auto make_sensor_plot = [this, sensorColors](unsigned index)
+      // {
+      //   const auto & colorStyle = sensorColors[index % sensorColors.size()];
+      //   return mc_rtc::gui::plot::Y(
+      //       fmt::format("Sensor {}", index), [this, index]() { return lastData_.data[index]; }, colorStyle.first,
+      //       colorStyle.second);
+      // };
+      //
+      // auto & gui = *gc.controller().gui();
+      // // Add buttons to add/remove the "BoneTag Measurements" plot
+      // gui.addElement({"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::ElementsStacking::Horizontal,
+      //                mc_rtc::gui::Button("Add BoneTag Measurements Plot",
+      //                                    [this, &gui, make_sensor_plot]()
+      //                                    {
+      //                                      gui.addPlot("BoneTag Measurements",
+      //                                                  mc_rtc::gui::plot::X("t", [this]() { return t_; }));
+      //                                      for(unsigned i = 0; i < serial_->SENSOR_COUNT; ++i)
+      //                                      {
+      //                                        gui.addPlotData("BoneTag Measurements", make_sensor_plot(i));
+      //                                      }
+      //                                    }),
+      //                mc_rtc::gui::Button("Remove BoneTag Measurements Plot",
+      //                                    [this, &gui]() { gui.removePlot("BoneTag Measurements"); }));
+      //
+      // for(unsigned i = 0; i < serial_->SENSOR_COUNT; ++i)
+      // {
+      //   gui.addElement({"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::ElementsStacking::Horizontal,
+      //                  mc_rtc::gui::Button(fmt::format("Add Sensor {}", i),
+      //                                      [this, &gui, make_sensor_plot, i]()
+      //                                      {
+      //                                        gui.addPlot(fmt::format("BoneTag Measurements / Sensor {}", i),
+      //                                                    mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+      //                                                    make_sensor_plot(i));
+      //                                      }),
+      //                  mc_rtc::gui::Button(fmt::format("Remove Sensor {}", i), [this, &gui, i]()
+      //                                      { gui.removePlot(fmt::format("BoneTag Measurements / Sensor {}", i)); }));
+      // }
 
-      auto & gui = *gc.controller().gui();
-      // Add buttons to add/remove the "BoneTag Measurements" plot
-      gui.addElement({"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::ElementsStacking::Horizontal,
-                     mc_rtc::gui::Button("Add BoneTag Measurements Plot",
-                                         [this, &gui, make_sensor_plot]()
-                                         {
-                                           gui.addPlot("BoneTag Measurements",
-                                                       mc_rtc::gui::plot::X("t", [this]() { return t_; }));
-                                           for(unsigned i = 0; i < serial_->SENSOR_COUNT; ++i)
-                                           {
-                                             gui.addPlotData("BoneTag Measurements", make_sensor_plot(i));
-                                           }
-                                         }),
-                     mc_rtc::gui::Button("Remove BoneTag Measurements Plot",
-                                         [this, &gui]() { gui.removePlot("BoneTag Measurements"); }));
-
-      for(unsigned i = 0; i < serial_->SENSOR_COUNT; ++i)
-      {
-        gui.addElement({"Plugins", "BoneTagSerialPlugin"}, mc_rtc::gui::ElementsStacking::Horizontal,
-                       mc_rtc::gui::Button(fmt::format("Add Sensor {}", i),
-                                           [this, &gui, make_sensor_plot, i]()
-                                           {
-                                             gui.addPlot(fmt::format("BoneTag Measurements / Sensor {}", i),
-                                                         mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-                                                         make_sensor_plot(i));
-                                           }),
-                       mc_rtc::gui::Button(fmt::format("Remove Sensor {}", i), [this, &gui, i]()
-                                           { gui.removePlot(fmt::format("BoneTag Measurements / Sensor {}", i)); }));
-      }
-
-      std::vector<double> data;
-      data.resize(lastData_.size());
-      gc.controller().logger().addLogEntry("BoneTag_Sensors", this,
-                                           [this, data]() mutable -> std::vector<double>
-                                           {
-                                             for(int i = 0; i < lastData_.size(); ++i)
-                                             {
-                                               data[i] = lastData_[i];
-                                             }
-                                             return data;
-                                           });
+      // std::vector<std::vector<double>> data;
+      // data.resize(lastData_.data.size());
+      // gc.controller().logger().addLogEntry("BoneTag_Sensors", this,
+      //                                      [this]()
+      //                                      {
+      //                                        return lastData_.data;
+      //                                      });
     }
   }
   hasReceivedData_ = false;

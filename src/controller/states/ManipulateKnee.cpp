@@ -132,7 +132,8 @@ std::string Result::to_csv() const
   int i = 0;
   for(const auto & sensorDataLine : sensorDataLines)
   {
-    result << controllerIter << "," << sensorData.timestamp_ms.count() / 1000.0 << ","
+    result << controllerIter << "," << sensorData.start_time_ms.count() / 1000.0 << ","
+           << sensorData.end_time_ms.count() << ","
            << mc_rtc::io::to_string(
                   std::vector<double>{
                       femurRotation.x(),
@@ -168,7 +169,7 @@ void ResultHandler::write_csv(const std::string & path)
     mc_rtc::log::error("Failed to write results to CSV file {}", path);
   }
 
-  csv << "iteration,time[s],femur_tangage,femur_roulis,femur_lacet,"
+  csv << "iteration,start_measurement_time[s],end_measurement_time[s],femur_tangage,femur_roulis,femur_lacet,"
          "tibia_tangage,tibia_roulis,tibia_lacet,"
          "femur_x,femur_y,femur_z,"
          "tibia_x,tibia_y,tibia_z";
@@ -592,7 +593,8 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
     result.tibiaTranslation = tibiaTranslationActual_;
     result.sensorData = *sensorData;
     results_.addResult(result);
-    mc_rtc::log::info("Got new data at t={}[s]", result.sensorData.timestamp_ms.count() / 1000);
+    mc_rtc::log::info("Got new data between t={}[s] and t={}[s]", result.sensorData.start_time_ms.count() / 1000,
+                      result.sensorData.end_time_ms.count() / 1000);
     ++measuredSamples_;
   }
   return measuredSamples_ == desiredSamples_;
