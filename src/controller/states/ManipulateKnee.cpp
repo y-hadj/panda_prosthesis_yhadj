@@ -206,11 +206,7 @@ void write_csv_prototmr(const std::vector<Result> & results, const std::string &
 
   for(size_t i = 0; i < halfSize - 1; ++i)
   {
-    csv << ",sensor_time_" << i;
-  }
-  for(size_t i = 0; i < halfSize - 1; ++i)
-  {
-    csv << ",sensor_value_" << i;
+    csv << ",sensor_time_" << i << ",sensor_value_" << i;
   }
   csv << std::endl;
 

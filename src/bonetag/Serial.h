@@ -276,7 +276,7 @@ struct Serial
   TimedRawData getLastFrame() const
   {
     frameUpdated_ = false;
-    // std::lock_guard<std::mutex> lock(frameMutex_);
+    std::lock_guard<std::mutex> lock(frameMutex_);
     return lastSensorFrame_;
   }
 

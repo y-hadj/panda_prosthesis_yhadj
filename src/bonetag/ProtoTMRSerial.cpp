@@ -1,6 +1,7 @@
 #include "ProtoTMRSerial.h"
 #include <mc_rtc/io_utils.h>
 #include <mc_rtc/logging.h>
+#include <cstdint>
 #include <fcntl.h>
 #include <memory>
 #include <sys/ioctl.h>
@@ -162,12 +163,16 @@ bool ProtoTMRSerial::validate_data(Data & raw_data)
 
 // data is organized as follow
 // - 0: id
-// - 1-20: timestamp with two-bytes per timestamp, both bytes should be recombined (fort/failble)
-// - 21-30
+// - 1: timestamp hight byte sensor 0
+// - 2: timestamp low byte sensor 0
+// - 3: value sensor 0
+// ...
+// - 1: timestamp hight byte sensor 22
+// - 2: timestamp low byte sensor 22
+// - 3: value sensor 22
 //
 // example data is (single line):
-// 21,
-// 1,133124959,838,1,133124995,850,1,133125031,852,1,133125067,848,1,133125104,852,1,133125140,849,1,133125176,
+// 21,1,133124959,838,1,133124995,850,1,133125031,852,1,133125067,848,1,133125104,852,1,133125140,849,1,133125176,
 // 847,1,133125212,848,1,133125249,848,1,133125285,857
 void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
 {
@@ -190,6 +195,7 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
     try
     {
       numbers.emplace_back(static_cast<uint64_t>(std::stoul(item)));
+      // mc_rtc::log::info("item: {}, number: {}", item, numbers.back());
     }
     catch(const std::exception &)
     {
@@ -216,10 +222,20 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
   numbers_t.reserve(20); // Reserve space for 20 numbers to avoid reallocations
   for(size_t i = 0; i < 10; ++i)
   {
-    auto ts = static_cast<uint64_t>(buff[1 + 2 * i]) | (static_cast<uint64_t>(buff[2 + 2 * i]) << 8);
+    // mc_rtc::log::info("buf[{}] = {}, buf[{}] = {}, buf[{}] = {}",
+    //   1 + 3 * i,
+    //   numbers[1 + 3 * i],
+    //   2 + 3 * i,
+    //   numbers[2 + 3 * i],
+    //   3 + 3 * i,
+    //   numbers[3 + 3 * i]);
+
+    uint64_t ts_high = numbers[1 + 3 * i];
+    uint64_t ts_low = numbers[2 + 3 * i];
+    auto ts = (ts_high << 32) | ts_low;
     numbers_t.push_back(ts);
+    numbers_t.push_back(numbers[3 + 3 * i]);
   }
-  std::copy(numbers.begin() + 21, numbers.end(), std::back_inserter(numbers_t));
   // mc_rtc::log::info("size: {}, numbers_t: {}", numbers_t.size(), mc_rtc::io::to_string(numbers_t));
 
   // copy to the full frame
@@ -231,7 +247,7 @@ void ProtoTMRSerial::parse_buffer(unsigned char * buff, size_t buff_len)
 
     // update lastSensorFrame
     {
-      // std::lock_guard<std::mutex> lock{frameMutex_};
+      std::lock_guard<std::mutex> lock{frameMutex_};
       lastSensorFrame_ = currentSensorFrame_;
     }
     gotFullFrame_ = true;
