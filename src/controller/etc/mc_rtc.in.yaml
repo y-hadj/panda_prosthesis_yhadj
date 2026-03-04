@@ -18,6 +18,8 @@ MainRobot:
 Enabled: PandaProsthesis
 Timestep: 0.001
 VerboseLoader: true
+Log: false
+LogDirectory: /home/vscode/workspace/logs
 
 # Franka specific configuration
 Franka:
