@@ -6,6 +6,7 @@
 #include <mc_trajectory/SequenceInterpolator.h>
 // #include "../../bonetag/BoneTagSerial.h"
 #include "../../plugins/ProtoTMR/Serial.h"
+#include "../../plugins/bonetag/BoneTagSerial.h"
 #include <deque>
 
 struct ReadCSV
@@ -29,6 +30,7 @@ struct PTransformInterpolator
   }
 };
 
+template<typename SensorDataT>
 struct Result
 {
   unsigned int controllerIter;
@@ -39,9 +41,18 @@ struct Result
   Eigen::Vector3d tibiaTranslation;
 
   // Sensor measurements
-  io::Serial::TimedRawData sensorData;
+  SensorDataT sensorData;
 };
 
+struct ProtoTMRResult : Result<io::Serial::TimedRawData>
+{
+};
+
+struct BoneTagResult : Result<io::BoneTagSerial::Data>
+{
+};
+
+template<typename ResultT>
 struct ResultHandler
 {
   void clear()
@@ -49,18 +60,18 @@ struct ResultHandler
     results_.clear();
   }
 
-  void addResult(const Result & result)
+  void addResult(const ResultT & result)
   {
     results_.push_back(result);
   }
 
-  inline const std::vector<Result> results() const noexcept
+  inline const std::vector<ResultT> results() const noexcept
   {
     return results_;
   }
 
 protected:
-  std::vector<Result> results_;
+  std::vector<ResultT> results_;
 };
 
 void write_csv_bonetag();
@@ -156,7 +167,8 @@ protected:
   unsigned measuredSamples_ = 0;
   bool newFrameRequested_ = false;
 
-  ResultHandler results_;
+  ResultHandler<ProtoTMRResult> resultsProtoTMR_;
+  ResultHandler<BoneTagResult> resultsBoneTag_;
   std::string results_dir_ = "/tmp";
   std::string resultPath_ = "/tmp/BoneTagResults.csv";
 

@@ -321,6 +321,8 @@ void BoneTagSerial::parse_buffer(unsigned char * buff, size_t buff_len)
             std::lock_guard<std::mutex> lock(received_data_mutex);
             received_data.push_back(decode_result.first);
             last_received_data = decode_result.first;
+            lastSensorFrame_ = decode_result.first;
+            gotFullFrame_ = true;
             /*std::ostringstream oss;
             for(auto value : received_packet.sensors_data.sensor_data)
             {

@@ -104,7 +104,7 @@ void ReadCSV::generateFromConfiguration(const mc_rtc::Configuration & config)
   }
 }
 
-void write_csv_bonetag(std::vector<Result> results, const std::string & path)
+void write_csv_bonetag(std::vector<BoneTagResult> results, const std::string & path)
 {
   if(results.empty()) return;
   std::ofstream csv;
@@ -114,79 +114,45 @@ void write_csv_bonetag(std::vector<Result> results, const std::string & path)
     mc_rtc::log::error("Failed to write results to CSV file {}", path);
   }
 
-  csv << "iteration,start_measurement_time[s],end_measurement_time[s],femur_tangage,femur_roulis,femur_lacet,"
+  csv << "iteration,femur_tangage,femur_roulis,femur_lacet,"
          "tibia_tangage,tibia_roulis,tibia_lacet,"
          "femur_x,femur_y,femur_z,"
          "tibia_x,tibia_y,tibia_z";
 
   // write sensor csv header
-  for(size_t i = 0; i < results.front().sensorData.data.size(); ++i)
+  for(size_t i = 0; i < results.front().sensorData.size(); ++i)
   {
     csv << ",sensor_" << i;
   }
   csv << std::endl;
 
-  // write sensor data. N lines per sensor
   for(const auto & result : results)
   {
-    auto & sensorData = result.sensorData;
-    // csv << result.to_csv() << std::endl;
-    if(sensorData.data.empty()) continue;
-
-    // n values per sensor
-    auto n = sensorData.data.front().size();
-    // each line is a value for all sensors
-    std::vector<std::string> sensorDataLines;
-    for(int i = 0; i < n; i++)
-    {
-      std::stringstream sensorDataLine;
-      for(int sensor = 0; sensor < sensorData.data.size(); sensor++)
-      {
-        // ith data for sensor sensor
-        auto data = sensorData.data[sensor][i];
-        sensorDataLine << data;
-        if(sensor < sensorData.data.size() - 1)
-        {
-          sensorDataLine << ",";
-        }
-      }
-      sensorDataLines.push_back(sensorDataLine.str());
-    }
-
-    int i = 0;
-    for(const auto & sensorDataLine : sensorDataLines)
-    {
-      csv << result.controllerIter << "," << sensorData.start_time_ms.count() / 1000.0 << ","
-          << sensorData.end_time_ms.count() / 1000.0 << ","
-          << mc_rtc::io::to_string(
-                 std::vector<double>{
-                     result.femurRotation.x(),
-                     result.femurRotation.y(),
-                     result.femurRotation.z(),
-                     result.tibiaRotation.x(),
-                     result.tibiaRotation.y(),
-                     result.tibiaRotation.z(),
-                     result.femurTranslation.x(),
-                     result.femurTranslation.y(),
-                     result.femurTranslation.z(),
-                     result.tibiaTranslation.x(),
-                     result.tibiaTranslation.y(),
-                     result.tibiaTranslation.z(),
-                 },
-                 ",")
-          << "," << sensorDataLine;
-      if(i++ < sensorDataLines.size() - 1)
-      {
-        csv << std::endl;
-      }
-    }
+    csv << result.controllerIter << ","
+        << mc_rtc::io::to_string(
+               std::vector<double>{
+                   result.femurRotation.x(),
+                   result.femurRotation.y(),
+                   result.femurRotation.z(),
+                   result.tibiaRotation.x(),
+                   result.tibiaRotation.y(),
+                   result.tibiaRotation.z(),
+                   result.femurTranslation.x(),
+                   result.femurTranslation.y(),
+                   result.femurTranslation.z(),
+                   result.tibiaTranslation.x(),
+                   result.tibiaTranslation.y(),
+                   result.tibiaTranslation.z(),
+               },
+               ",")
+        << "," << mc_rtc::io::to_string(result.sensorData, ",") << std::endl;
   }
 
   csv.close();
   mc_rtc::log::success("Results written to {}", path);
 }
 
-void write_csv_prototmr(const std::vector<Result> & results, const std::string & path)
+void write_csv_prototmr(const std::vector<ProtoTMRResult> & results, const std::string & path)
 {
   if(results.empty()) return;
   std::ofstream csv;
@@ -247,11 +213,11 @@ void ManipulateKnee::saveResults(bool clear)
 {
   if(sensorType == "ProtoTMRPlugin")
   {
-    write_csv_prototmr(results_.results(), resultPath_);
+    write_csv_prototmr(resultsProtoTMR_.results(), resultPath_);
   }
   else if(sensorType == "BoneTagSerialPlugin")
   {
-    write_csv_bonetag(results_.results(), resultPath_);
+    write_csv_bonetag(resultsBoneTag_.results(), resultPath_);
   }
   else
   {
@@ -260,7 +226,8 @@ void ManipulateKnee::saveResults(bool clear)
   }
   if(clear)
   {
-    results_.clear();
+    resultsBoneTag_.clear();
+    resultsProtoTMR_.clear();
   }
 }
 
@@ -509,7 +476,12 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
                                               manualLogging_ = false;
                                               saveResults();
                                             }),
-                        mc_rtc::gui::Button("Clear Results", [this]() { results_.clear(); }));
+                        mc_rtc::gui::Button("Clear Results",
+                                            [this]()
+                                            {
+                                              resultsProtoTMR_.clear();
+                                              resultsBoneTag_.clear();
+                                            }));
 
   ctl.gui()->addElement(
       this, {"ManipulateKnee", "Trajectory"},
@@ -703,24 +675,19 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
 
 void ManipulateKnee::measure_bonetag(mc_control::fsm::Controller & ctl)
 {
-  // // We got a new frame
-  // auto sensorData = ctl.datastore().call<io::Serial::TimedRawData>(sensorType + "::GetLastFrame");
-  // mc_rtc::log::success("[{}] Got new sensor data frame:", name());
-  // for(unsigned i = 0; i < sensorData.data.size(); ++i)
-  // {
-  //   mc_rtc::log::info("Sensor[{}]: {}", i, mc_rtc::io::to_string(sensorData.data[i]));
-  // }
-  //
-  // Result result;
-  // result.controllerIter = controllerIter_;
-  // result.femurRotation = femurRotationActual_;
-  // result.femurTranslation = femurTranslationActual_;
-  // result.tibiaRotation = tibiaRotationActual_;
-  // result.tibiaTranslation = tibiaTranslationActual_;
-  // result.sensorData = std::move(sensorData);
-  // results_.addResult(result);
-  // mc_rtc::log::info("Got new data between t={}[s] and t={}[s]", result.sensorData.start_time_ms.count() / 1000,
-  //                   result.sensorData.end_time_ms.count() / 1000);
+  // We got a new frame
+
+  auto sensorData = ctl.datastore().call<io::BoneTagSerial::Data>(sensorType + "::GetLastFrame");
+  mc_rtc::log::success("[{}] Got new sensor data frame: {}", name(), mc_rtc::io::to_string(sensorData));
+
+  BoneTagResult result;
+  result.controllerIter = controllerIter_;
+  result.femurRotation = femurRotationActual_;
+  result.femurTranslation = femurTranslationActual_;
+  result.tibiaRotation = tibiaRotationActual_;
+  result.tibiaTranslation = tibiaTranslationActual_;
+  result.sensorData = std::move(sensorData);
+  resultsBoneTag_.addResult(result);
 }
 
 void ManipulateKnee::measure_prototmr(mc_control::fsm::Controller & ctl)
@@ -733,14 +700,14 @@ void ManipulateKnee::measure_prototmr(mc_control::fsm::Controller & ctl)
     mc_rtc::log::info("Sensor[{}]: {}", i, mc_rtc::io::to_string(sensorData.data[i]));
   }
 
-  Result result;
+  ProtoTMRResult result;
   result.controllerIter = controllerIter_;
   result.femurRotation = femurRotationActual_;
   result.femurTranslation = femurTranslationActual_;
   result.tibiaRotation = tibiaRotationActual_;
   result.tibiaTranslation = tibiaTranslationActual_;
   result.sensorData = std::move(sensorData);
-  results_.addResult(result);
+  resultsProtoTMR_.addResult(result);
   mc_rtc::log::info("Got new data between t={}[s] and t={}[s]", result.sensorData.start_time_ms.count() / 1000,
                     result.sensorData.end_time_ms.count() / 1000);
 }

@@ -81,6 +81,13 @@ void BoneTagSerialPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc
         serial_.close_serial_port();
       });
 
+  gc.controller().datastore().make_call("BoneTagSerialPlugin::RequestNewFrame",
+                                        [this]() { return serial_.requestNewFrame(); });
+  gc.controller().datastore().make_call("BoneTagSerialPlugin::GotNewFrame",
+                                        [this]() { return serial_.gotFullFrame(); });
+  gc.controller().datastore().make_call("BoneTagSerialPlugin::GetLastFrame",
+                                        [this]() { return serial_.getLastFrame(); });
+
   gc.controller().datastore().make<bool>("BoneTagSerialPlugin", true);
   gc.controller().datastore().make_call("BoneTagSerialPlugin::Connected", [this]() { return serial_.connected(); });
   gc.controller().datastore().make_call("BoneTagSerialPlugin::GetLastData",
@@ -176,10 +183,10 @@ void BoneTagSerialPlugin::before(mc_control::MCGlobalController & gc)
               sensorColors[index].first, sensorColors[index].second);
         };
 
-        gc.controller().gui()->addPlot("BoneTag Measurements", mc_rtc::gui::plot::X("N", [this]() { return t_; }),
-                                       make_sensor_plot(0), make_sensor_plot(1), make_sensor_plot(2),
-                                       make_sensor_plot(3), make_sensor_plot(4), make_sensor_plot(5),
-                                       make_sensor_plot(6), make_sensor_plot(7));
+        // gc.controller().gui()->addPlot("BoneTag Measurements", mc_rtc::gui::plot::X("N", [this]() { return t_; }),
+        //                                make_sensor_plot(0), make_sensor_plot(1), make_sensor_plot(2),
+        //                                make_sensor_plot(3), make_sensor_plot(4), make_sensor_plot(5),
+        //                                make_sensor_plot(6), make_sensor_plot(7));
 
         std::vector<double> data;
         data.resize(lastData_.size());

@@ -2,8 +2,6 @@
 #define BONETAGSERIAL_H
 #include "Packet.hpp"
 #include <array>
-#include <fstream>
-#include <iostream>
 #include <mutex>
 #include <vector>
 #define SENSOR_COUNT 8
@@ -22,9 +20,39 @@ struct BoneTagSerial
   bool connected();
   void read_serial_port();
   bool isConnected = false;
+  bool gotFullFrame_ = false;
 
-  std::mutex received_data_mutex;
+  /**
+   * \brief Request a new frame. You must wait until gotFullFrame() = true to have the new full sensor frame
+   */
+  void requestNewFrame()
+  {
+    gotFullFrame_ = false;
+  }
+
+  /**
+   * \bried True after a full frame has been received:
+   * - if you called requestNewFrame(): this is true when the next full frame has been received
+   * - otherwise it always true after the first full sensor frame has been received
+   **/
+  inline bool gotFullFrame() const noexcept
+  {
+    return gotFullFrame_;
+  }
+
+  /**
+   * \brief Get the last full sensor frame that has been received.
+   * Call gotFullFrame() beforehand to check if the frame has changed since the last call to this function.
+   */
+  RawData getLastFrame() const
+  {
+    std::lock_guard<std::mutex> lock(received_data_mutex);
+    return lastSensorFrame_;
+  }
+
+  mutable std::mutex received_data_mutex;
   std::vector<Data> received_data;
+  Data lastSensorFrame_;
 
   int cycles_waited = 0;
   int cycles_timeout = 5000;

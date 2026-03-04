@@ -21,6 +21,5 @@ set(plugin_HDR
   ${CMAKE_CURRENT_SOURCE_DIR}/ProtoTMRPlugin.h
 )
 add_plugin(ProtoTMRPlugin "${plugin_SRC}" "${plugin_HDR}")
-# target_link_libraries(BoneTagSerialPlugin PUBLIC BoneTagSerial)
 target_link_libraries(ProtoTMRPlugin PUBLIC ProtoTMR)
 install(FILES etc/ProtoTMRPlugin.yaml DESTINATION ${MC_PLUGINS_RUNTIME_INSTALL_PREFIX}/etc/)

@@ -25,29 +25,7 @@ void ProtoTMRPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc::Con
 
   serial_port_name = config("serial_port_name", std::string{"/dev/ttyUSB0"});
   serial_port_baud_rate = config("serial_port_baud_rate", 9600);
-
-  auto sensor = config("sensor", std::string{"ProtoTMR"});
-  if(sensor == "BoneTag")
-  {
-    mc_rtc::log::info("[ProtoTMRPlugin] Using BoneTag sensor");
-    mc_rtc::log::error_and_throw("not supported");
-    // serial_.reset(new io::ProtoTMR{});
-  }
-  else if(sensor == "ProtoTMR")
-  {
-    mc_rtc::log::info("[ProtoTMRPlugin] Using ProtoTMR sensor");
-    serial_.reset(new io::ProtoTMRSerial{serial_port_name, serial_port_baud_rate});
-  }
-  else if(sensor == "None")
-  {
-    mc_rtc::log::warning("[ProtoTMRPlugin] No sensor used because 'sensor: {}'", sensor);
-    return;
-  }
-  else
-  {
-    mc_rtc::log::error_and_throw<std::runtime_error>(
-        "[ProtoTMRPlugin] Unknown sensor type: {}, supported values are BoneTag or ProtoTMR", sensor);
-  }
+  serial_.reset(new io::ProtoTMRSerial(serial_port_name, serial_port_baud_rate));
 
   data_.assign(serial_->SENSOR_COUNT, 0);
   // lastData_ = data_;
@@ -55,7 +33,6 @@ void ProtoTMRPlugin::init(mc_control::MCGlobalController & gc, const mc_rtc::Con
   config("verbose", verbose_);
 
   gc.controller().datastore().make<bool>("ProtoTMRPlugin", true);
-  gc.controller().datastore().make_call("ProtoTMRPlugin::SensorType", [sensor]() -> std::string { return sensor; });
   gc.controller().datastore().make_call("ProtoTMRPlugin::Connected", [this]() { return serial_->connected(); });
   gc.controller().datastore().make_call("ProtoTMRPlugin::RequestNewFrame",
                                         [this]() { return serial_->requestNewFrame(); });
