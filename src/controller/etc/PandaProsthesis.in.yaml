@@ -52,7 +52,8 @@ robots:
       lower_force_thresholds: [-100, -100, -100, -100, -100, -100]
       upper_force_thresholds: [100, 100, 100, 100, 100, 100]
   panda_tibia:
-    module: Panda7LIRMMDefault::BoneTag::Tibia
+    module: Panda7LIRMM_2::Default::BoneTag::Tibia
+    # module: Panda7LIRMMDefault::BoneTag::Tibia
     # module: Panda7LIRMMDefault::TAA::Talar
     # module: Panda7LIRMMDefault::TSA::Glenoid
     # module: Panda7LIRMMDefault::TSA::Humerus
@@ -464,7 +465,8 @@ states:
       - ["Load Saved Calibration", "LoadSavedCalibration"]
       - ["Start from current configuration", "StartFromCurrent"]
 
-Plugins: [BoneTagSerialPlugin]
+# Plugins: [BoneTagSerialPlugin]
+Plugins: [ProtoTMRPlugin]
 
 transitions:
   #- [ChooseMode, Simulation, Simulation, Auto]

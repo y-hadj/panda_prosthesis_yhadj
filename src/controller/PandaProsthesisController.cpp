@@ -44,6 +44,23 @@ bool PandaProsthetics::run()
 void PandaProsthetics::reset(const mc_control::ControllerResetData & reset_data)
 {
   mc_control::fsm::Controller::reset(reset_data);
+
+  // Set initial pose by attaching the tables together
+  if(robot().hasFrame("Front_exterior") && robot("panda_tibia").hasFrame("Right_interior"))
+  {
+    auto & panda_femur = robot("panda_femur");
+    auto & panda_tibia = robot("panda_tibia");
+    auto X_0_pt = panda_tibia.posW();
+
+    auto X_pt_Right_interior = panda_tibia.frame("Right_interior").position() * X_0_pt.inv();
+    auto X_Right_interior_Front_exterior = sva::RotZ(mc_rtc::constants::PI / 2);
+    auto X_Front_exterior_0_pf = X_0_pt * panda_femur.frame("Front_exterior").position().inv();
+    auto X_0_pf = X_Front_exterior_0_pf * X_Right_interior_Front_exterior * X_pt_Right_interior * X_0_pt;
+
+    robot("panda_femur").posW(X_0_pf);
+    realRobot("panda_femur").posW(X_0_pf);
+    outputRobot("panda_femur").posW(X_0_pf);
+  }
 }
 
 CONTROLLER_CONSTRUCTOR("PandaProsthesis", panda_prosthetics::PandaProsthetics)

@@ -1,5 +1,8 @@
+# MainRobot:
+#   module: Panda2LIRMMDefault::BoneTag::Femur
+#   name: panda_femur
 MainRobot:
-  module: Panda2LIRMMDefault::BoneTag::Femur
+  module: Panda2LIRMM_2::Default::BoneTag::Femur
   name: panda_femur
 
 # MainRobot:
