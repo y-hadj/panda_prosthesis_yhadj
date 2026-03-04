@@ -21,6 +21,8 @@ VerboseLoader: true
 Log: false
 LogDirectory: /home/vscode/workspace/logs
 
+VerboseLoader: true
+
 # Franka specific configuration
 Franka:
   ShowNetworkWarnings: false # If true (default), show warning messages about missing network data

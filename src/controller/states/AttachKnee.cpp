@@ -2,6 +2,7 @@
 #include <mc_control/fsm/Controller.h>
 #include <mc_rbdyn/RobotLoader.h>
 #include <SpaceVecAlg/PTransform.h>
+#include <mc_solver/ConstraintSetLoader.h>
 
 void AttachKnee::start(mc_control::fsm::Controller & ctl)
 {
@@ -16,10 +17,25 @@ void AttachKnee::start(mc_control::fsm::Controller & ctl)
                           * ctl.robot("panda_tibia").frame("Tibia").position());
     }
   }
+
+  collisions_added_ = false;
 }
 
 bool AttachKnee::run(mc_control::fsm::Controller & ctl)
 {
+  // add cols only on 1st run (i.e. after robot is fully loaded)
+  if(!collisions_added_ && config_.has("AddCollisions"))
+  {
+    auto constraints = config_("AddCollisions");
+    for(const auto & c : constraints)
+    {
+      auto constraint = mc_solver::ConstraintSetLoader::load<mc_solver::CollisionsConstraint>(ctl.solver(), c);
+      ctl.solver().addConstraintSet(*constraint);
+      added_constraints_.push_back(constraint);
+    }
+    collisions_added_ = true;
+  }
+
   if(!config_("display", true)) return true;
   if(config_("followKnee", true))
   {
@@ -34,6 +50,12 @@ bool AttachKnee::run(mc_control::fsm::Controller & ctl)
   return true;
 };
 
-void AttachKnee::teardown(mc_control::fsm::Controller & ctl){};
+void AttachKnee::teardown(mc_control::fsm::Controller & ctl){
+  for(auto & constraint : added_constraints_)
+  {
+    ctl.solver().removeConstraintSet(*constraint);
+  }
+  added_constraints_.clear();
+};
 
 EXPORT_SINGLE_STATE("AttachKnee", AttachKnee)

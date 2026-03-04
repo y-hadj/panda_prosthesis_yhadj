@@ -17,3 +17,23 @@ frames:
     X_p_f:
       translation: [0, 0, 0]
       rotation: [0, 0, 0]
+
+collisionObjects:
+  bonetag_knee_brace_left: &colLeft
+   - bonetag_knee_brace
+   - type: cylinder
+     radius: 0.07
+     p1: [0, 0, -0.001]
+     p2: [0, 0, 0.001]
+  bonetag_knee_brace_right: *colLeft
+
+collisionTransforms:
+  bonetag_knee_brace_left:
+    translation: [-0.07, 0, 0]
+    rotation: [0, 1.57, 0]
+  bonetag_knee_brace_right:
+    translation: [0.07, 0, 0]
+    rotation: [0, 1.57, 0]
+
+ #bonetag_knee_brace_right: [bonetag_knee_brace, *colRight]
+  
