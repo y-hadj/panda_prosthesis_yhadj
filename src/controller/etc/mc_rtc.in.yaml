@@ -23,7 +23,6 @@ Timestep: 0.001
 VerboseLoader: true
 Log: false
 LogDirectory: /home/vscode/workspace/logs
-
 VerboseLoader: true
 
 # Franka specific configuration
