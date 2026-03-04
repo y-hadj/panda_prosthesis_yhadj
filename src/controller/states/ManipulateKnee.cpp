@@ -245,11 +245,11 @@ void write_csv_prototmr(const std::vector<Result> & results, const std::string &
 
 void ManipulateKnee::saveResults(bool clear)
 {
-  if(sensorType == "ProtoTMR")
+  if(sensorType == "ProtoTMRPlugin")
   {
     write_csv_prototmr(results_.results(), resultPath_);
   }
-  else if(sensorType == "BoneTag")
+  else if(sensorType == "BoneTagSerialPlugin")
   {
     write_csv_bonetag(results_.results(), resultPath_);
   }
@@ -266,14 +266,21 @@ void ManipulateKnee::saveResults(bool clear)
 
 void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
 {
-  if(ctl.datastore().has("BoneTagSerialPlugin::SensorType"))
+  if(ctl.datastore().has("BoneTagSerialPlugin::Connected")
+     && ctl.datastore().call<bool>("BoneTagSerialPlugin::Connected"))
   {
-    sensorType = ctl.datastore().call<std::string>("BoneTagSerialPlugin::SensorType");
-    mc_rtc::log::info("[{}] Detected sensor type: {}", name(), sensorType);
+    sensorType = "BoneTagSerialPlugin";
+    mc_rtc::log::success("[{}] Detected connected sensor type: {}", name(), sensorType);
+  }
+  else if(ctl.datastore().has("ProtoTMRPlugin::Connected") && ctl.datastore().call<bool>("ProtoTMRPlugin::Connected"))
+  {
+    sensorType = "ProtoTMRPlugin";
+    mc_rtc::log::success("[{}] Detected connected sensor type: {}", name(), sensorType);
   }
   else
   {
     mc_rtc::log::warning("[{}] No sensor type found in datastore, defaulting to 'None'", name());
+    measure_ = false;
   }
 
   if(config_.has("femur"))
@@ -653,28 +660,73 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
   {
     return true;
   }
-  else if(!ctl.datastore().has("BoneTagSerialPlugin") || !ctl.datastore().call<bool>("BoneTagSerialPlugin::Connected"))
+  else if(!ctl.datastore().has(sensorType + "::Connected") || !ctl.datastore().call<bool>(sensorType + "::Connected"))
   {
-    mc_rtc::log::error("[{}] Requested measement of BoneTag sensors but the sensor is unavailable", name());
+    mc_rtc::log::error("[{}] Requested measement of {} sensors but the sensor is unavailable", name(), sensorType);
     return false;
   }
 
   if(!newFrameRequested_)
   {
-    ctl.datastore().call("BoneTagSerialPlugin::RequestNewFrame");
+    ctl.datastore().call(sensorType + "::RequestNewFrame");
     mc_rtc::log::info("[{}] Requested new sensor data frame", name());
     newFrameRequested_ = true;
   }
 
   // Check until we got a new frame
-  if(!ctl.datastore().call<bool>("BoneTagSerialPlugin::GotNewFrame"))
+  if(!ctl.datastore().call<bool>(sensorType + "::GotNewFrame"))
   {
     // mc_rtc::log::info("[{}] Waiting for new sensor data frame...", name());
     return false;
   }
 
+  if(sensorType == "BoneTagSerialPlugin")
+  {
+    measure_bonetag(ctl);
+  }
+  else if(sensorType == "ProtoTMRPlugin")
+  {
+    measure_prototmr(ctl);
+  }
+
+  ++measuredSamples_;
+
+  newFrameRequested_ = false;
+
+  if(measuredSamples_ == desiredSamples_)
+  {
+    mc_rtc::log::success("Measurement done! Got {} samples as requested", measuredSamples_);
+    return true;
+  }
+  return false;
+}
+
+void ManipulateKnee::measure_bonetag(mc_control::fsm::Controller & ctl)
+{
+  // // We got a new frame
+  // auto sensorData = ctl.datastore().call<io::Serial::TimedRawData>(sensorType + "::GetLastFrame");
+  // mc_rtc::log::success("[{}] Got new sensor data frame:", name());
+  // for(unsigned i = 0; i < sensorData.data.size(); ++i)
+  // {
+  //   mc_rtc::log::info("Sensor[{}]: {}", i, mc_rtc::io::to_string(sensorData.data[i]));
+  // }
+  //
+  // Result result;
+  // result.controllerIter = controllerIter_;
+  // result.femurRotation = femurRotationActual_;
+  // result.femurTranslation = femurTranslationActual_;
+  // result.tibiaRotation = tibiaRotationActual_;
+  // result.tibiaTranslation = tibiaTranslationActual_;
+  // result.sensorData = std::move(sensorData);
+  // results_.addResult(result);
+  // mc_rtc::log::info("Got new data between t={}[s] and t={}[s]", result.sensorData.start_time_ms.count() / 1000,
+  //                   result.sensorData.end_time_ms.count() / 1000);
+}
+
+void ManipulateKnee::measure_prototmr(mc_control::fsm::Controller & ctl)
+{
   // We got a new frame
-  auto sensorData = ctl.datastore().call<io::Serial::TimedRawData>("BoneTagSerialPlugin::GetLastFrame");
+  auto sensorData = ctl.datastore().call<io::Serial::TimedRawData>(sensorType + "::GetLastFrame");
   mc_rtc::log::success("[{}] Got new sensor data frame:", name());
   for(unsigned i = 0; i < sensorData.data.size(); ++i)
   {
@@ -691,15 +743,6 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
   results_.addResult(result);
   mc_rtc::log::info("Got new data between t={}[s] and t={}[s]", result.sensorData.start_time_ms.count() / 1000,
                     result.sensorData.end_time_ms.count() / 1000);
-  ++measuredSamples_;
-
-  newFrameRequested_ = false;
-
-  if(measuredSamples_ == desiredSamples_)
-  {
-    mc_rtc::log::success("Measurement done! Got {} samples as requested", measuredSamples_);
-  }
-  return measuredSamples_ == desiredSamples_;
 }
 
 bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)

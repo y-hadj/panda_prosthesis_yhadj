@@ -5,7 +5,7 @@
 #include <mc_tasks/TransformTask.h>
 #include <mc_trajectory/SequenceInterpolator.h>
 // #include "../../bonetag/BoneTagSerial.h"
-#include "../../bonetag/Serial.h"
+#include "../../plugins/ProtoTMR/Serial.h"
 #include <deque>
 
 struct ReadCSV
@@ -133,6 +133,8 @@ protected:
 
   /// Returns true when all measurements have been taken
   bool measure(mc_control::fsm::Controller & ctl);
+  void measure_bonetag(mc_control::fsm::Controller & ctl);
+  void measure_prototmr(mc_control::fsm::Controller & ctl);
 
 protected:
   ReadCSV file_;
