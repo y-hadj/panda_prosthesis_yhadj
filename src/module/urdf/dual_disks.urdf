@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <robot name="dual_disks">
   <link name="world"/>
-  
+
   <link name="disk1">
     <visual>
       <origin xyz="0 0 -0.065" rpy="0 0 0"/>

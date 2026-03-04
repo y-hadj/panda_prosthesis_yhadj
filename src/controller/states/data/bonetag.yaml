@@ -196,10 +196,11 @@ ManipulateKnee::Rotation:
         initial_dimWeight: [5, 5, 5, 5, 5, 5]
         dimWeight: [100, 100, 100, 1000, 1000, 1000]
         initial_stiffness: [5, 5, 5, 5, 5, 5]
+        initial_damping: [10, 10, 10, 10, 10, 10]
         # stiffness: [100, 100, 100, 1000, 1000, 1000] # original openloop gains
         # stiffness: [20, 20, 20, 50, 50, 50] # more reasonable closedloop gains
         stiffness: [55, 55, 55, 55, 55, 55] # tuned gains
-        # damping: [82.32, 82.32, 82.32, 82.32, 82.32, 82.32] # tuned gains
+        damping: [82.32, 82.32, 82.32, 82.32, 82.32, 82.32] # tuned gains
         robot: panda_tibia
         frame: Tibia
       FemurTask:

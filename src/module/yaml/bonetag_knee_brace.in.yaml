@@ -36,4 +36,4 @@ collisionTransforms:
     rotation: [0, 1.57, 0]
 
  #bonetag_knee_brace_right: [bonetag_knee_brace, *colRight]
-  
+

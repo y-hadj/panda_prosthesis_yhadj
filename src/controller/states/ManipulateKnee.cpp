@@ -719,11 +719,18 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
   {
     auto interpGains = [this](std::string && taskName, mc_tasks::TransformTask & task)
     {
-      auto s = stiffnessInterp_(config_(taskName)("initial_stiffness"), config_(taskName)("stiffness"),
-                                controllerIter_ / 1000.);
-      auto w = dimWeightInterp_(config_(taskName)("initial_dimWeight"), config_(taskName)("dimWeight"),
-                                controllerIter_ / 1000.);
+      const auto & taskC = config_(taskName);
+      auto tinterp = controllerIter_ / 1000.;
+      auto s = stiffnessInterp_(taskC("initial_stiffness"), taskC("stiffness"), tinterp);
       task.stiffness(s);
+
+      if(taskC.has("initial_damping") && taskC.has("damping"))
+      {
+        auto d = stiffnessInterp_(taskC("initial_damping"), taskC("damping"), tinterp);
+        task.damping(d);
+      }
+
+      auto w = dimWeightInterp_(taskC("initial_dimWeight"), taskC("dimWeight"), tinterp);
       task.dimWeight(w);
     };
     interpGains("FemurTask", *femur_task_);

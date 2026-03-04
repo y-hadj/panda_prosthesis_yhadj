@@ -1,8 +1,8 @@
 #include "AttachKnee.h"
 #include <mc_control/fsm/Controller.h>
 #include <mc_rbdyn/RobotLoader.h>
-#include <SpaceVecAlg/PTransform.h>
 #include <mc_solver/ConstraintSetLoader.h>
+#include <SpaceVecAlg/PTransform.h>
 
 void AttachKnee::start(mc_control::fsm::Controller & ctl)
 {
@@ -50,7 +50,8 @@ bool AttachKnee::run(mc_control::fsm::Controller & ctl)
   return true;
 };
 
-void AttachKnee::teardown(mc_control::fsm::Controller & ctl){
+void AttachKnee::teardown(mc_control::fsm::Controller & ctl)
+{
   for(auto & constraint : added_constraints_)
   {
     ctl.solver().removeConstraintSet(*constraint);
