@@ -1,9 +1,0 @@
-# @package _global_
-path: "@MODULE_INSTALL_LOCATION@"
-name: dual_disks
-urdf_path: urdf/dual_disks.urdf
-rsdf_dir: rsdf/dual_disks
-fixed: true
-collision: true
-visual: true
-mass: 0

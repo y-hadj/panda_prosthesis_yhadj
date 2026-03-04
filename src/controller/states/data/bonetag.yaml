@@ -84,107 +84,104 @@ ChangeTool:
       stiffness: 5
       move:
         translation: [0, 0, 0.05]
-  AddCollisions: &collisions_panda_femur_tibia_knee_brace
-  - type: collision
-    r1: panda_femur
-    r2: knee_brace
-    collisions:
-      - body1: femur
-        body2: bonetag_knee_brace_left
-        iDist: 0.01
-        sDist: 0.001
-      - body1: support_femur
-        body2: bonetag_knee_brace_left
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link5
-        body2: bonetag_knee_brace_left
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link6
-        body2: bonetag_knee_brace_left
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link7
-        body2: bonetag_knee_brace_left
-        iDist: 0.01
-        sDist: 0.001
-      - body1: femur
-        body2: bonetag_knee_brace_right
-        iDist: 0.01
-        sDist: 0.001
-      - body1: support_femur
-        body2: bonetag_knee_brace_right
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link5
-        body2: bonetag_knee_brace_right
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link6
-        body2: bonetag_knee_brace_right
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link7
-        body2: bonetag_knee_brace_right
-        iDist: 0.01
-        sDist: 0.001
-    # useMinimal: true
-  - type: collision
-    r1: panda_tibia
-    r2: knee_brace
-    collisions:
-      - body1: tibia
-        body2: bonetag_knee_brace_left
-        iDist: 0.01
-        sDist: 0.001
-      - body1: support_tibia
-        body2: bonetag_knee_brace_left
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link5
-        body2: bonetag_knee_brace_left
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link6
-        body2: bonetag_knee_brace_left
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link7
-        body2: bonetag_knee_brace_left
-        iDist: 0.01
-        sDist: 0.001
-      - body1: tibia
-        body2: bonetag_knee_brace_right
-        iDist: 0.01
-        sDist: 0.001
-      - body1: support_tibia
-        body2: bonetag_knee_brace_right
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link5
-        body2: bonetag_knee_brace_right
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link6
-        body2: bonetag_knee_brace_right
-        iDist: 0.01
-        sDist: 0.001
-      - body1: convex_panda_link7
-        body2: bonetag_knee_brace_right
-        iDist: 0.01
-        sDist: 0.001
-    # useMinimal: true
 
 ManipulateKnee::Rotation:
   base: Parallel
-  # AddCollisions: *collisions_panda_femur_tibia_knee_brace
   states: [AttachKnee, ManipulateKnee]
   configs:
     AttachKnee:
       followKnee: false
       display: true
-      AddCollisions: *collisions_panda_femur_tibia_knee_brace
+      collisions: &collisions_panda_femur_tibia_knee_brace
+      - type: collision
+        r1: panda_femur
+        r2: knee_brace
+        collisions:
+          - body1: femur
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: support_femur
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link5
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link6
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link7
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: femur
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: support_femur
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link5
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link6
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link7
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+      - type: collision
+        r1: panda_tibia
+        r2: knee_brace
+        collisions:
+          - body1: tibia
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: support_tibia
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link5
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link6
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link7
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: tibia
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: support_tibia
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link5
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link6
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link7
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+        # useMinimal: true
     ManipulateKnee:
       samples: 1
       rate: 7
