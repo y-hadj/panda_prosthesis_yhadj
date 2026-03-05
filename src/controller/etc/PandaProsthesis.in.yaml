@@ -469,12 +469,11 @@ states:
 Plugins: [ProtoTMRPlugin]
 
 transitions:
-  #- [ChooseMode, Simulation, Simulation, Auto]
-  #- [ChooseMode, Real, Real, Auto]
-  - [Simulation, OK, Simulation, Strict]
+  - [ChooseMode, Simulation, Simulation, Auto]
+  - [ChooseMode, SimulationFast, SimulationFast, Auto]
+  - [ChooseMode, Real, Real, Auto]
 
 # Initial state
-#init: ChooseMode
-init: Simulation
+init: ChooseMode
 # Store the location of configuration files
 CALIB_DIR_INIT: "@CALIB_DIR_INIT@"

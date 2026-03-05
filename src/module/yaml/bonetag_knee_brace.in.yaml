@@ -22,7 +22,7 @@ collisionObjects:
   bonetag_knee_brace_left: &colLeft
    - bonetag_knee_brace
    - type: cylinder
-     radius: 0.07
+     radius: 0.1
      p1: [0, 0, -0.001]
      p2: [0, 0, 0.001]
   bonetag_knee_brace_right: *colLeft

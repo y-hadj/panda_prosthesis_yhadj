@@ -241,10 +241,24 @@ CalibrateWithTool:
 Simulation:
   base: Meta
   transitions:
-  #- [InitialChoice, LoadSavedCalibration, InitializeRobots::Load, Auto]
-  #- [InitialChoice, StartFromCurrent, InitializeRobots::NoLoad, Auto]
-  #- [InitializeRobots::Load, Calibrate, Calibrate, Auto]
-  #- [InitializeRobots::Load, CalibrateWithTool, CalibrateWithTool, Auto]
+  - [InitialChoice, LoadSavedCalibration, InitializeRobots::Load, Auto]
+  - [InitialChoice, StartFromCurrent, InitializeRobots::NoLoad, Auto]
+  - [InitializeRobots::Load, Calibrate, Calibrate, Auto]
+  - [InitializeRobots::Load, CalibrateWithTool, CalibrateWithTool, Auto]
+  - [InitializeRobots::Load, SkipCalibration, ManipulateKnee::Rotation, Auto]
+  - [ManipulateKnee::Rotation, OK, InitialChoice, Strict]
+  - [InitializeRobots::Load, ManualCalibration, InitializeRobots::NoLoad, Auto]
+  - [InitializeRobots::NoLoad, Calibrate, Calibrate, Auto]
+  - [InitializeRobots::NoLoad, CalibrateWithTool, CalibrateWithTool, Auto]
+
+  - [Calibrate, OK, ChangeTool, Auto]
+  - [CalibrateWithTool, OK, InitializeRobots::Load, Auto]
+
+  - [ChangeTool, ToolChanged, InitializeRobots::Load, Auto]
+
+SimulationFast:
+  base: Meta
+  transitions:
   - [InitializeRobots::Load, SkipCalibration, ManipulateKnee::Rotation, Auto]
   - [ManipulateKnee::Rotation, OK, InitialChoice, Strict]
   - [InitializeRobots::Load, ManualCalibration, InitializeRobots::NoLoad, Auto]
