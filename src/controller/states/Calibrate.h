@@ -12,4 +12,7 @@ struct Calibrate : mc_control::fsm::State
 
 protected:
   bool saveOnly_ = false;
+  bool savePose_ = true;
+  bool save_ = true;
+  bool next_ = false;
 };
