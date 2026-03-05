@@ -185,9 +185,17 @@ ManipulateKnee::Rotation:
     ManipulateKnee:
       samples: 1
       rate: 7
-      thresholds:
-        translation: 0.1
-        rotation: 0.1
+      convergence:
+        tibiaAngularError: false
+        tibiaLinearError: false
+        femurAngularError: false
+        femurLinearError: false
+        femurVelocityError: true
+        tibiaVelocityError: true
+        thresholds:
+          translation: 1.0
+          rotation: 1.0
+          velocity: 0.5
       TibiaTask: &transform_task_tibia
         type: transform
         initial_dimWeight: [5, 5, 5, 5, 5, 5]

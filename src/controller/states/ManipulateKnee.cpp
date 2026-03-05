@@ -271,16 +271,22 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
   setRate(config_("rate", 0.2), ctl.timeStep);
   config_("samples", desiredSamples_);
 
-  if(config_.has("thresholds"))
+  if(auto convergenceC = config_.find("convergence"))
   {
-    auto c = config_("thresholds");
-    if(c.has("translation"))
+    auto & c = convergence_;
+    (*convergenceC)("tibiaAngularError", c.tibiaAngularError);
+    (*convergenceC)("tibiaLinearError", c.tibiaLinearError);
+    (*convergenceC)("femurAngularError", c.femurAngularError);
+    (*convergenceC)("femurLinearError", c.femurLinearError);
+    (*convergenceC)("femurVelocityError", c.femurVelocityError);
+    (*convergenceC)("tibiaVelocityError", c.tibiaVelocityError);
+
+    if(auto thresholds = convergenceC->find("thresholds"))
     {
-      translationTreshold_ = c("translation");
-    }
-    if(c.has("rotation"))
-    {
-      rotationTreshold_ = c("rotation");
+      auto t = *thresholds;
+      t("translation", c.translationTreshold_);
+      t("rotation", c.rotationTreshold_);
+      t("velocity", c.velocityThreshold_);
     }
   }
 
@@ -534,49 +540,61 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
 
   ctl.gui()->addElement(this, {"ManipulateKnee", "Trajectory", "Thresholds"},
                         mc_rtc::gui::NumberInput(
-                            "Translation [mm]", [this]() { return translationTreshold_; },
-                            [this](double treshold) { translationTreshold_ = treshold; }),
+                            "Translation [mm]", [this]() { return convergence_.translationTreshold_; },
+                            [this](double treshold) { convergence_.translationTreshold_ = treshold; }),
                         mc_rtc::gui::NumberInput(
-                            "Rotation [deg]", [this]() { return rotationTreshold_; },
-                            [this](double treshold) { rotationTreshold_ = treshold; }));
+                            "Rotation [deg]", [this]() { return convergence_.rotationTreshold_; },
+                            [this](double treshold) { convergence_.rotationTreshold_ = treshold; }));
 
-  ctl.gui()->addElement(this, {"ManipulateKnee", "Error"},
-                        mc_rtc::gui::ArrayLabel("Tibia Error",
-                                                {"Tangage [deg]", "Roulis [deg]", "Lacet [deg]", "Left (x) [mm]",
-                                                 "Forward (y) [mm]", "Down (z) [mm]"},
-                                                [this]()
-                                                {
-                                                  Eigen::Vector6d res;
-                                                  res.head<3>() = tibiaError_.angular() * 180 / mc_rtc::constants::PI;
-                                                  res.tail<3>() = tibiaError_.linear() * 1000;
-                                                  return truncate(res);
-                                                }),
-                        mc_rtc::gui::ArrayLabel("Tibia Error (norm)", {"Rotation [deg]", "Translation [mm]"},
-                                                [this]()
-                                                {
-                                                  Eigen::Vector2d res;
-                                                  res[0] = tibiaError_.angular().norm() * 180 / mc_rtc::constants::PI;
-                                                  res[1] = tibiaError_.linear().norm() * 1000;
-                                                  return truncate(res);
-                                                }),
-                        mc_rtc::gui::ArrayLabel("Femur Error",
-                                                {"Tangage [deg]", "Roulis [deg]", "Lacet [deg]", "Left (x) [mm]",
-                                                 "Forward (y) [mm]", "Down (z) [mm]"},
-                                                [this]()
-                                                {
-                                                  Eigen::Vector6d res;
-                                                  res.head<3>() = femurError_.angular() * 180 / mc_rtc::constants::PI;
-                                                  res.tail<3>() = femurError_.linear() * 1000;
-                                                  return truncate(res);
-                                                }),
-                        mc_rtc::gui::ArrayLabel("Femur Error (norm)", {"Rotation [deg]", "Translation [mm]"},
-                                                [this]()
-                                                {
-                                                  Eigen::Vector2d res;
-                                                  res[0] = femurError_.angular().norm() * 180 / mc_rtc::constants::PI;
-                                                  res[1] = femurError_.linear().norm() * 1000;
-                                                  return truncate(res);
-                                                }));
+  auto addErrorLabels = [this, &ctl](const auto & poseError, const auto & velocityError, const std::string & prefix,
+                                     const std::vector<std::string> & path)
+  {
+    ctl.gui()->addElement(
+        this, path,
+        mc_rtc::gui::ArrayLabel(
+            prefix + " Error",
+            {"Tangage [deg]", "Roulis [deg]", "Lacet [deg]", "Left (x) [mm]", "Forward (y) [mm]", "Down (z) [mm]"},
+            [this, &poseError]()
+            {
+              Eigen::Vector6d res;
+              res.head<3>() = poseError.angular() * 180 / mc_rtc::constants::PI;
+              res.tail<3>() = poseError.linear() * 1000;
+              return truncate(res);
+            }),
+        mc_rtc::gui::ArrayLabel(prefix + " Error (norm)", {"Rotation [deg]", "Translation [mm]", "Speed"},
+                                [this, &poseError, &velocityError]()
+                                {
+                                  Eigen::Vector3d res;
+                                  res[0] = poseError.angular().norm() * 180 / mc_rtc::constants::PI;
+                                  res[1] = poseError.linear().norm() * 1000;
+                                  res[2] = velocityError.linear().norm() * 1000; // Speed as norm of linear velocity
+                                  return truncate(res);
+                                }),
+        mc_rtc::gui::ArrayLabel(prefix + " Velocity Error",
+                                {"Angular X [deg/s]", "Angular Y [deg/s]", "Angular Z [deg/s]", "Linear X [mm/s]",
+                                 "Linear Y [mm/s]", "Linear Z [mm/s]"},
+                                [this, &velocityError]()
+                                {
+                                  Eigen::Vector6d res;
+                                  res.head<3>() = velocityError.angular() * 180 / mc_rtc::constants::PI;
+                                  res.tail<3>() = velocityError.linear() * 1000;
+                                  return truncate(res);
+                                }),
+        mc_rtc::gui::ArrayLabel(prefix + " Velocity Error (angular/linear norm)",
+                                {"Angular Speed [deg/s]", "Linear Speed [mm/s]"},
+                                [this, &velocityError]()
+                                {
+                                  Eigen::Vector2d res;
+                                  res[0] = velocityError.angular().norm() * 180 / mc_rtc::constants::PI;
+                                  res[1] = velocityError.linear().norm() * 1000;
+                                  return truncate(res);
+                                }),
+        mc_rtc::gui::Label(prefix + " Velocity Error (norm)",
+                           [this, &velocityError]() { return velocityError.vector().norm(); }));
+  };
+
+  addErrorLabels(convergence_.femurError_, convergence_.femurVelocityError_, "Femur", {"ManipulateKnee", "Error"});
+  addErrorLabels(convergence_.tibiaError_, convergence_.tibiaVelocityError_, "Tibia", {"ManipulateKnee", "Error"});
 
   tibia_task_ = mc_tasks::MetaTaskLoader::load<mc_tasks::TransformTask>(ctl.solver(), config_("TibiaTask"));
   tibia_task_->reset();
@@ -785,44 +803,81 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
     }
     else
     {
-      if(!continuous_ && !hasConverged_)
+      // Wait until at least half of iterRate_
+      // This is done in part to ensure that convergence criteria based on speed are not triggered
+      // when the robot is still starting the motion
+      if(iter_ >= iterRate_ / 2.)
       {
-        const auto & tibia_error = tibiaError_;
-        const auto & femur_error = femurError_;
-        hasConverged_ = (tibia_error.angular().norm() <= mc_rtc::constants::toRad(rotationTreshold_)
-                         && tibia_error.linear().norm() <= translationTreshold_ / 1000.
-                         && femur_error.angular().norm() <= mc_rtc::constants::toRad(rotationTreshold_)
-                         && femur_error.linear().norm() <= translationTreshold_ / 1000.);
-        if(hasConverged_)
+        if(!continuous_ && !hasConverged_)
         {
-          mc_rtc::log::success(
-              "Convergence criteria met at iteration {}: Tibia error (angular: {:.2f} deg, linear: {:.2f} mm), Femur "
-              "error (angular: {:.2f} deg, linear: {:.2f} mm)",
-              iter_, tibia_error.angular().norm() * 180 / mc_rtc::constants::PI, tibia_error.linear().norm() * 1000,
-              femur_error.angular().norm() * 180 / mc_rtc::constants::PI, femur_error.linear().norm() * 1000);
-        }
-      }
-      else
-      { // Ignore convergence criteria when running continous trajectories
-        hasConverged_ = true;
-      }
+          const auto & c = convergence_;
+          auto optionalErrorCheck = [](bool errorFlag, double errorValue, double threshold)
+          { return !errorFlag || errorValue <= threshold; };
 
-      if(hasConverged_)
-      { // We have converged to a waypoint
-        if(!gotMeasurement_)
-        { // But have not yet measured a sensor frame, request a new full frame
-          // gotMeasurement_ will be set to true once we got the new frame, then we will wait until iterRate_ has been
-          // reached before going to the next waypoint
-          gotMeasurement_ = measure(ctl);
-          if(gotMeasurement_)
+          hasConverged_ =
+              optionalErrorCheck(c.tibiaAngularError, c.tibiaError_.angular().norm(),
+                                 mc_rtc::constants::toRad(c.rotationTreshold_))
+              && optionalErrorCheck(c.tibiaLinearError, c.tibiaError_.linear().norm(), c.translationTreshold_ / 1000.)
+              && optionalErrorCheck(c.femurAngularError, c.femurError_.angular().norm(),
+                                    mc_rtc::constants::toRad(c.rotationTreshold_))
+              && optionalErrorCheck(c.femurLinearError, c.femurError_.linear().norm(), c.translationTreshold_ / 1000.)
+              && optionalErrorCheck(c.femurVelocityError, c.femurVelocityError_.linear().norm(), c.velocityThreshold_)
+              && optionalErrorCheck(c.tibiaVelocityError, c.tibiaVelocityError_.linear().norm(), c.velocityThreshold_);
+          if(hasConverged_)
           {
-            mc_rtc::log::success("Got measurement for waypoint at iteration {}, waiting until iter({})>=iterRate({})",
-                                 iter_, iter_, iterRate_);
+            std::ostringstream msg;
+            msg << "Convergence criteria met at iteration " << iter_ << ": ";
+
+            if(c.tibiaAngularError)
+              msg << "[Tibia angular: " << std::fixed << std::setprecision(2)
+                  << c.tibiaError_.angular().norm() * 180 / mc_rtc::constants::PI << " deg] ";
+            if(c.tibiaLinearError)
+              msg << "[Tibia linear: " << std::fixed << std::setprecision(2) << c.tibiaError_.linear().norm() * 1000
+                  << " mm] ";
+            if(c.femurAngularError)
+              msg << "[Femur angular: " << std::fixed << std::setprecision(2)
+                  << c.femurError_.angular().norm() * 180 / mc_rtc::constants::PI << " deg] ";
+            if(c.femurLinearError)
+              msg << "[Femur linear: " << std::fixed << std::setprecision(2) << c.femurError_.linear().norm() * 1000
+                  << " mm] ";
+            if(c.femurVelocityError)
+              msg << "[Femur velocity: " << std::fixed << std::setprecision(2) << c.femurVelocityError_.linear().norm()
+                  << " m/s] ";
+            if(c.tibiaVelocityError)
+              msg << "[Tibia velocity: " << std::fixed << std::setprecision(2) << c.tibiaVelocityError_.linear().norm()
+                  << " m/s] ";
+
+            mc_rtc::log::success(msg.str());
           }
         }
         else
-        { // We got the measurement, now we wait until iterRate
-          if(iter_ >= iterRate_)
+        { // Ignore convergence criteria when running continous trajectories
+          hasConverged_ = true;
+        }
+
+        if(hasConverged_ || iter_ >= iterRate_)
+        { // We have converged to a waypoint
+          if(measure_ && !gotMeasurement_)
+          { // Start measurement
+            // mc_rtc::log::success("Stopping motion and requesting measurement at iteration {}...", iter_);
+            femur_task_->reset();
+            tibia_task_->reset();
+            // But have not yet measured a sensor frame, request a new full frame
+            // gotMeasurement_ will be set to true once we got the new frame, then we will wait until iterRate_ has been
+            // reached before going to the next waypoint
+            gotMeasurement_ = measure(ctl);
+            if(gotMeasurement_)
+            {
+              mc_rtc::log::success("Got measurement for waypoint at iteration {}, waiting until iter({})>=iterRate({})",
+                                   iter_, iter_, iterRate_);
+            }
+          }
+
+          if(
+              /*Proceed if not measuring, or if measuring and a measurement has been received.*/
+              (!measure_ || (measure_ && gotMeasurement_))
+              /*Proceed if not in continuous mode, or if in continuous mode and enough iterations have passed.*/
+              && (!continuous_ || continuous_ && iter_ >= iterRate_))
           {
             mc_rtc::log::info("Waypoint handled successfully, remaining: {}", file_.tibiaRotationVector.size() - 1);
             gotMeasurement_ = false;
@@ -834,9 +889,10 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
     }
   }
 
-  auto handle_motion = [](mc_rbdyn::Robot & realRobot, sva::MotionVecd & error, mc_tasks::TransformTask & task,
-                          const sva::PTransformd X_0_axisFrame, Eigen::Vector3d translation, Eigen::Vector3d rotation,
-                          Eigen::Vector3d & translationActual, Eigen::Vector3d & rotationActual)
+  auto handle_motion = [](mc_rbdyn::Robot & realRobot, sva::MotionVecd & posError, sva::MotionVecd & velError,
+                          mc_tasks::TransformTask & task, const sva::PTransformd X_0_axisFrame,
+                          Eigen::Vector3d translation, Eigen::Vector3d rotation, Eigen::Vector3d & translationActual,
+                          Eigen::Vector3d & rotationActual)
   {
     translation *= 0.001; // translation in [m]
     rotation *= mc_rtc::constants::PI / 180.; // rotation in [rad]
@@ -852,13 +908,14 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
     rotationActual = mc_rbdyn::rpyFromMat(X_axisFrame_actual.rotation()) * 180 / mc_rtc::constants::PI;
 
     sva::PTransformd X_axis_target(mc_rbdyn::rpyToMat(rotation), translation);
-    error = sva::transformError(X_axisFrame_actual, X_axis_target);
+    posError = sva::transformError(X_axisFrame_actual, X_axis_target);
+    velError = sva::MotionVecd(task.speed());
   };
 
-  handle_motion(ctl.robot("panda_femur"), femurError_, *femur_task_, X_0_femurAxis, femurTranslation_, femurRotation_,
-                femurTranslationActual_, femurRotationActual_);
-  handle_motion(ctl.robot("panda_tibia"), tibiaError_, *tibia_task_, X_0_tibiaAxis, tibiaTranslation_, tibiaRotation_,
-                tibiaTranslationActual_, tibiaRotationActual_);
+  handle_motion(ctl.robot("panda_femur"), convergence_.femurError_, convergence_.femurVelocityError_, *femur_task_,
+                X_0_femurAxis, femurTranslation_, femurRotation_, femurTranslationActual_, femurRotationActual_);
+  handle_motion(ctl.robot("panda_tibia"), convergence_.tibiaError_, convergence_.tibiaVelocityError_, *tibia_task_,
+                X_0_tibiaAxis, tibiaTranslation_, tibiaRotation_, tibiaTranslationActual_, tibiaRotationActual_);
 
   if(manualLogging_)
   {

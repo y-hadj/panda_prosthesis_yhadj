@@ -78,7 +78,7 @@ protected:
 
 protected:
   int serialPort;
-  double alphaFilter_ = 0.3;
+  double alphaFilter_ = 1.0;
 };
 } // namespace io
 

@@ -183,10 +183,10 @@ void BoneTagSerialPlugin::before(mc_control::MCGlobalController & gc)
               sensorColors[index].first, sensorColors[index].second);
         };
 
-        // gc.controller().gui()->addPlot("BoneTag Measurements", mc_rtc::gui::plot::X("N", [this]() { return t_; }),
-        //                                make_sensor_plot(0), make_sensor_plot(1), make_sensor_plot(2),
-        //                                make_sensor_plot(3), make_sensor_plot(4), make_sensor_plot(5),
-        //                                make_sensor_plot(6), make_sensor_plot(7));
+        gc.controller().gui()->addPlot("BoneTag Measurements", mc_rtc::gui::plot::X("N", [this]() { return t_; }),
+                                       make_sensor_plot(0), make_sensor_plot(1), make_sensor_plot(2),
+                                       make_sensor_plot(3), make_sensor_plot(4), make_sensor_plot(5),
+                                       make_sensor_plot(6), make_sensor_plot(7));
 
         std::vector<double> data;
         data.resize(lastData_.size());
