@@ -209,30 +209,67 @@ void write_csv_prototmr(const std::vector<ProtoTMRResult> & results, const std::
   mc_rtc::log::success("Results written to {}", path);
 }
 
-void ManipulateKnee::saveResults(bool clear)
+void ManipulateKnee::triggerSaveResults(bool force)
 {
+  std::lock_guard<std::mutex> lock(saveResultsMutex_);
   if(sensorType == "ProtoTMRPlugin")
   {
-    write_csv_prototmr(resultsProtoTMR_.results(), resultPath_);
-  }
-  else if(sensorType == "BoneTagSerialPlugin")
-  {
-    write_csv_bonetag(resultsBoneTag_.results(), resultPath_);
+    auto n = resultsProtoTMR_.results().size();
+    if(n != 0 && (force || n % resultSaveAfterN == 0))
+    {
+      resultsProtoTMRCopy_ = resultsProtoTMR_.results();
+      mc_rtc::log::info("[{}] Triggering results save for ProtoTMRPlugin, {} results to save", name(), n);
+      saveResultsCv_.notify_one();
+    }
   }
   else
   {
-    mc_rtc::log::warning("[{}] Unknown sensor type '{}', cannot save results", name(), sensorType);
-    return;
+    auto n = resultsBoneTag_.results().size();
+    if(n != 0 && (force || n % resultSaveAfterN == 0))
+    {
+      resultsBoneTagCopy_ = resultsBoneTag_.results();
+      mc_rtc::log::info("[{}] Triggering results save for BoneTagSerialPlugin, {} results to save", name(), n);
+      saveResultsCv_.notify_one();
+    }
   }
-  if(clear)
+}
+
+void ManipulateKnee::saveResultsThread()
+{
+  auto makeResultPath = [](const std::string &resultPath, size_t resultSize) {
+  boost::filesystem::path origPath(resultPath);
+  boost::filesystem::path newPath = origPath.parent_path() /
+    (origPath.stem().string() + "_" + std::to_string(resultSize) + ".csv");
+    return newPath.string();
+  };
+  std::unique_lock<std::mutex> lock(saveResultsMutex_);
+  while(saveResultsThreadRunning_)
   {
-    resultsBoneTag_.clear();
-    resultsProtoTMR_.clear();
+    saveResultsCv_.wait(lock);
+
+    if(sensorType == "ProtoTMRPlugin")
+    {
+      write_csv_prototmr(resultsProtoTMRCopy_, 
+          makeResultPath(resultPath_, resultsProtoTMR_.results().size()));
+    }
+    else if(sensorType == "BoneTagSerialPlugin")
+    {
+      write_csv_bonetag(resultsBoneTagCopy_,
+          makeResultPath(resultPath_, resultsBoneTag_.results().size()));
+    }
+    else
+    {
+      mc_rtc::log::warning("[{}] Unknown sensor type '{}', cannot save results", name(), sensorType);
+      return;
+    }
   }
 }
 
 void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
 {
+  saveResultsThreadRunning_ = true;
+  saveResultsThread_ = std::thread(&ManipulateKnee::saveResultsThread, this);
+
   if(ctl.datastore().has("BoneTagSerialPlugin::Connected")
      && ctl.datastore().call<bool>("BoneTagSerialPlugin::Connected"))
   {
@@ -480,7 +517,7 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
                                             {
                                               mc_rtc::log::info("Saving manual logging results");
                                               manualLogging_ = false;
-                                              saveResults();
+                                              triggerSaveResults(true);
                                             }),
                         mc_rtc::gui::Button("Clear Results",
                                             [this]()
@@ -685,6 +722,7 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
 
   if(measuredSamples_ == desiredSamples_)
   {
+    triggerSaveResults();
     mc_rtc::log::success("Measurement done! Got {} samples as requested", measuredSamples_);
     return true;
   }
@@ -879,10 +917,18 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
               /*Proceed if not in continuous mode, or if in continuous mode and enough iterations have passed.*/
               && (!continuous_ || continuous_ && iter_ >= iterRate_))
           {
-            mc_rtc::log::info("Waypoint handled successfully, remaining: {}", file_.tibiaRotationVector.size() - 1);
+            auto remaining = file_.tibiaRotationVector.size();
+            mc_rtc::log::info("Waypoint handled successfully, remaining: {}", remaining);
             gotMeasurement_ = false;
             hasConverged_ = false;
-            next_ = true;
+            if(remaining == 0)
+            {
+              stop();
+            }
+            else
+            {
+              next_ = true;
+            }
           }
         }
       }
@@ -932,6 +978,8 @@ void ManipulateKnee::teardown(mc_control::fsm::Controller & ctl)
   ctl.solver().removeTask(tibia_task_);
   ctl.solver().removeTask(femur_task_);
   ctl.gui()->removeElements(this);
+  saveResultsThreadRunning_ = false;
+  saveResultsThread_.join();
 }
 
 EXPORT_SINGLE_STATE("ManipulateKnee", ManipulateKnee)

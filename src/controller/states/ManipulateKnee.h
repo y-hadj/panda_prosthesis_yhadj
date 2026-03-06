@@ -8,6 +8,9 @@
 #include "../../plugins/ProtoTMR/Serial.h"
 #include "../../plugins/bonetag/BoneTagSerial.h"
 #include <deque>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 struct ReadCSV
 {
@@ -103,11 +106,21 @@ protected:
   void stop()
   {
     play_ = false;
-    saveResults();
+    triggerSaveResults(true);
+    resultsBoneTag_.clear();
+    resultsProtoTMR_.clear();
     trajOffsets_.reset();
   }
 
-  void saveResults(bool clear = true);
+  /**
+   * Saving is done in a thread to avoid slowing down the real-time control
+   * 
+   * This function copies the available results data (locks on saveResultsMutex_, thread-safe)
+   * Calling triggerSaveResults() will notify the saveResultsThread_ that new data is available to save. When force=false, it will only trigger when there are a multiple of resultSaveAfterN results available.
+   *
+   * @params force Force copying the latest available results (regardless of resultSaveAfterN value)
+   */
+  void triggerSaveResults(bool force = false);
 
   inline void forceNext() noexcept
   {
@@ -187,6 +200,9 @@ protected:
 
   ResultHandler<ProtoTMRResult> resultsProtoTMR_;
   ResultHandler<BoneTagResult> resultsBoneTag_;
+  std::vector<ProtoTMRResult> resultsProtoTMRCopy_; // copy for saving
+  std::vector<BoneTagResult> resultsBoneTagCopy_; // copy for saving
+  unsigned int resultSaveAfterN = 10; // save after 100 points
   std::string results_dir_ = "/tmp";
   std::string resultPath_ = "/tmp/BoneTagResults.csv";
 
@@ -298,4 +314,11 @@ protected:
   double femurOffsetInterpolationTime_ = 0;
 
   unsigned int controllerIter_ = 0;
+
+  /** Thread for saving results */
+  mutable std::mutex saveResultsMutex_; // should be locked when accessing resultsBoneTagCopy_ and resultsProtoTMRCopy_;
+  std::condition_variable saveResultsCv_; // call notify_one on this condition variable to wake up the thread
+  bool saveResultsThreadRunning_ = false;
+  std::thread saveResultsThread_;
+  void saveResultsThread();
 };
