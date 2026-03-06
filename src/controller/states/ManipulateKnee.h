@@ -7,10 +7,10 @@
 // #include "../../bonetag/BoneTagSerial.h"
 #include "../../plugins/ProtoTMR/Serial.h"
 #include "../../plugins/bonetag/BoneTagSerial.h"
-#include <deque>
-#include <thread>
-#include <mutex>
 #include <condition_variable>
+#include <deque>
+#include <mutex>
+#include <thread>
 
 struct ReadCSV
 {
@@ -114,9 +114,10 @@ protected:
 
   /**
    * Saving is done in a thread to avoid slowing down the real-time control
-   * 
+   *
    * This function copies the available results data (locks on saveResultsMutex_, thread-safe)
-   * Calling triggerSaveResults() will notify the saveResultsThread_ that new data is available to save. When force=false, it will only trigger when there are a multiple of resultSaveAfterN results available.
+   * Calling triggerSaveResults() will notify the saveResultsThread_ that new data is available to save. When
+   * force=false, it will only trigger when there are a multiple of resultSaveAfterN results available.
    *
    * @params force Force copying the latest available results (regardless of resultSaveAfterN value)
    */

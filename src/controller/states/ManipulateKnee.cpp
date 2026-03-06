@@ -236,10 +236,11 @@ void ManipulateKnee::triggerSaveResults(bool force)
 
 void ManipulateKnee::saveResultsThread()
 {
-  auto makeResultPath = [](const std::string &resultPath, size_t resultSize) {
-  boost::filesystem::path origPath(resultPath);
-  boost::filesystem::path newPath = origPath.parent_path() /
-    (origPath.stem().string() + "_" + std::to_string(resultSize) + ".csv");
+  auto makeResultPath = [](const std::string & resultPath, size_t resultSize)
+  {
+    boost::filesystem::path origPath(resultPath);
+    boost::filesystem::path newPath =
+        origPath.parent_path() / (origPath.stem().string() + "_" + std::to_string(resultSize) + ".csv");
     return newPath.string();
   };
   std::unique_lock<std::mutex> lock(saveResultsMutex_);
@@ -249,13 +250,11 @@ void ManipulateKnee::saveResultsThread()
 
     if(sensorType == "ProtoTMRPlugin")
     {
-      write_csv_prototmr(resultsProtoTMRCopy_, 
-          makeResultPath(resultPath_, resultsProtoTMR_.results().size()));
+      write_csv_prototmr(resultsProtoTMRCopy_, makeResultPath(resultPath_, resultsProtoTMRCopy_.size()));
     }
     else if(sensorType == "BoneTagSerialPlugin")
     {
-      write_csv_bonetag(resultsBoneTagCopy_,
-          makeResultPath(resultPath_, resultsBoneTag_.results().size()));
+      write_csv_bonetag(resultsBoneTagCopy_, makeResultPath(resultPath_, resultsBoneTagCopy_.size()));
     }
     else
     {
@@ -921,14 +920,7 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
             mc_rtc::log::info("Waypoint handled successfully, remaining: {}", remaining);
             gotMeasurement_ = false;
             hasConverged_ = false;
-            if(remaining == 0)
-            {
-              stop();
-            }
-            else
-            {
-              next_ = true;
-            }
+            next_ = true;
           }
         }
       }
