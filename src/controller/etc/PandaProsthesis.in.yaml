@@ -465,8 +465,8 @@ states:
       - ["Load Saved Calibration", "LoadSavedCalibration"]
       - ["Start from current configuration", "StartFromCurrent"]
 
-# Plugins: [BoneTagSerialPlugin]
-Plugins: [ProtoTMRPlugin]
+Plugins: [BoneTagSerialPlugin]
+# Plugins: [ProtoTMRPlugin]
 
 transitions:
   - [ChooseMode, Simulation, Simulation, Auto]
