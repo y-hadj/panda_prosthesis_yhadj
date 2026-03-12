@@ -1,0 +1,38 @@
+# Location of data files, all path in the YAML file are
+# interpreted relative to this path unless they are absolute paths
+path: "@MODULE_INSTALL_LOCATION@"
+name: bonetag_knee_brace
+urdf_path: urdf/bonetag_knee_brace.urdf
+rsdf_dir: rsdf/bonetag_knee_brace
+fixed: true
+
+# convexHulls are auto-generated
+
+# Default orientation (quaternion) and position of the floating base
+default_attitude: [1., 0., 0., 0., 0., 0., 0.]
+
+frames:
+  - name: KneeBraceCenter
+    parent: bonetag_knee_brace
+    X_p_f:
+      translation: [0, 0, 0]
+      rotation: [0, 0, 0]
+
+collisionObjects:
+  bonetag_knee_brace_left: &colLeft
+   - bonetag_knee_brace
+   - type: cylinder
+     radius: 0.1
+     p1: [0, 0, -0.001]
+     p2: [0, 0, 0.001]
+  bonetag_knee_brace_right: *colLeft
+
+collisionTransforms:
+  bonetag_knee_brace_left:
+    translation: [-0.07, 0, 0]
+    rotation: [0, 1.57, 0]
+  bonetag_knee_brace_right:
+    translation: [0.07, 0, 0]
+    rotation: [0, 1.57, 0]
+
+ #bonetag_knee_brace_right: [bonetag_knee_brace, *colRight]

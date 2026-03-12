@@ -2,7 +2,8 @@ InitializePandaFemur:
   base: Initial
   robot: panda_femur
   frame: Femur
-  stiffness: 10
+  showInstructions: true
+  stiffness: 100
   category: ["Initial Configuration"]
   default_pose:
     translation: [-0.7, 0, 0]
@@ -12,6 +13,7 @@ InitializePandaTibia:
   base: InitializePandaFemur
   robot: panda_tibia
   frame: Tibia
+  showInstructions: false
   default_pose:
     translation: [0.7, 0, 0]
     rotation: [0, 0, 3.14]
@@ -23,8 +25,10 @@ InitializeRobots:
     Choice:
       category: []
       choices:
-        - ["Calibrate", "Calibrate"]
+        - ["Save Calibration Pose", "Calibrate"]
         - ["Skip Calibration", "SkipCalibration"]
+        - ["Manual Calibration", "ManualCalibration"]
+        - ["[WIP] Calibrate With Tool", "CalibrateWithTool"]
 
 InitializeRobots::Load:
   base: InitializeRobots
@@ -41,6 +45,7 @@ InitializeRobots::NoLoad:
       load: false
     InitializePandaTibia:
       load: false
+
 
 ChangeTool:
   base: Choice
@@ -81,34 +86,165 @@ ChangeTool:
         translation: [0, 0, 0.05]
 
 ManipulateKnee::Rotation:
-  base: ManipulateKnee
-  samples: 15
-  rate: 0.5
-  thresholds:
-    translation: 0.1
-    rotation: 0.1
-  TibiaTask:
-    type: transform
-    dimWeight: [100, 100, 100, 1000, 1000, 1000]
-    stiffness: [10, 10, 10, 100, 100, 100]
-    robot: panda_tibia
-    frame: Tibia
-  FemurTask:
-    type: transform
-    dimWeight: [100, 100, 100, 1000, 1000, 1000]
-    stiffness: [10, 10, 10, 100, 100, 100]
-    robot: panda_femur
-    frame: Femur
-  femur:
-    minRotation: [-60, -15, -15]
-    maxRotation: [10, 15, 15]
-    minTranslation: [-30, -50, -50]
-    maxTranslation: [30, 50, 10]
-  tibia:
-    minRotation: [-30, -15, -15]
-    maxRotation: [30, 15, 15]
-    minTranslation: [-30, -50, -10]
-    maxTranslation: [30, 50, 50]
+  base: Parallel
+  states: [AttachKnee, ManipulateKnee]
+  configs:
+    AttachKnee:
+      followKnee: false
+      display: true
+      collisions: &collisions_panda_femur_tibia_knee_brace
+      - type: collision
+        r1: panda_femur
+        r2: knee_brace
+        collisions:
+          - body1: femur
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: support_femur
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link5
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link6
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link7
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: femur
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: support_femur
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link5
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link6
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link7
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+      - type: collision
+        r1: panda_tibia
+        r2: knee_brace
+        collisions:
+          - body1: tibia
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: support_tibia
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link5
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link6
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link7
+            body2: bonetag_knee_brace_left
+            iDist: 0.01
+            sDist: 0.001
+          - body1: tibia
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: support_tibia
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link5
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link6
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+          - body1: convex_panda_link7
+            body2: bonetag_knee_brace_right
+            iDist: 0.01
+            sDist: 0.001
+        # useMinimal: true
+    ManipulateKnee:
+      samples: 1
+      rate: 7
+      convergence:
+        tibiaAngularError: false
+        tibiaLinearError: false
+        femurAngularError: false
+        femurLinearError: false
+        femurVelocityError: true
+        tibiaVelocityError: true
+        thresholds:
+          translation: 1.0
+          rotation: 1.0
+          velocity: 0.5
+      TibiaTask: &transform_task_tibia
+        type: transform
+        initial_dimWeight: [5, 5, 5, 5, 5, 5]
+        dimWeight: [100, 100, 100, 1000, 1000, 1000]
+        initial_stiffness: [5, 5, 5, 5, 5, 5]
+        initial_damping: [10, 10, 10, 10, 10, 10]
+        # stiffness: [100, 100, 100, 1000, 1000, 1000] # original openloop gains
+        # stiffness: [20, 20, 20, 50, 50, 50] # more reasonable closedloop gains
+        stiffness: [55, 55, 55, 55, 55, 55] # tuned gains
+        damping: [82.32, 82.32, 82.32, 82.32, 82.32, 82.32] # tuned gains
+        robot: panda_tibia
+        frame: Tibia
+      FemurTask:
+        <<: *transform_task_tibia
+        robot: panda_femur
+        frame: Femur
+      femur:
+        minRotation: [-60, -15, -15]
+        maxRotation: [10, 15, 15]
+        minTranslation: [-30, -50, -50]
+        maxTranslation: [30, 50, 10]
+      tibia:
+        minRotation: [-30, -15, -15]
+        maxRotation: [30, 15, 15]
+        minTranslation: [-30, -50, -10]
+        maxTranslation: [30, 50, 50]
+
+ConnectCalibrationTool:
+  base: ConnectRobots
+  connect: true
+  robot: "panda_tibia"
+  connectModule: "BoneTag::Tibia::CalibrationTool"
+  fromLink: "tibia"
+  toLink: "bonetag_tibia_calibration_tool"
+  X_connect:
+    translation: [0., 0., 0]
+    rotation: [0, 0, 0]
+
+
+DisconnectCalibrationTool:
+  base: ConnectRobots
+  connect: false
+
+CalibrateWithTool:
+  base: Meta
+  transitions:
+  - [ConnectCalibrationTool, OK, Calibrate, Strict]
+  - [Calibrate, OK, ChangeTool, Strict]
+  - [ChangeTool, ToolChanged, DisconnectCalibrationTool, Strict]
 
 Simulation:
   base: Meta
@@ -116,9 +252,30 @@ Simulation:
   - [InitialChoice, LoadSavedCalibration, InitializeRobots::Load, Auto]
   - [InitialChoice, StartFromCurrent, InitializeRobots::NoLoad, Auto]
   - [InitializeRobots::Load, Calibrate, Calibrate, Auto]
+  - [InitializeRobots::Load, CalibrateWithTool, CalibrateWithTool, Auto]
   - [InitializeRobots::Load, SkipCalibration, ManipulateKnee::Rotation, Auto]
+  - [ManipulateKnee::Rotation, OK, InitialChoice, Strict]
+  - [InitializeRobots::Load, ManualCalibration, InitializeRobots::NoLoad, Auto]
   - [InitializeRobots::NoLoad, Calibrate, Calibrate, Auto]
+  - [InitializeRobots::NoLoad, CalibrateWithTool, CalibrateWithTool, Auto]
+
   - [Calibrate, OK, ChangeTool, Auto]
+  - [CalibrateWithTool, OK, InitializeRobots::Load, Auto]
+
+  - [ChangeTool, ToolChanged, InitializeRobots::Load, Auto]
+
+SimulationFast:
+  base: Meta
+  transitions:
+  - [InitializeRobots::Load, SkipCalibration, ManipulateKnee::Rotation, Auto]
+  - [ManipulateKnee::Rotation, OK, InitialChoice, Strict]
+  - [InitializeRobots::Load, ManualCalibration, InitializeRobots::NoLoad, Auto]
+  - [InitializeRobots::NoLoad, Calibrate, Calibrate, Auto]
+  - [InitializeRobots::NoLoad, CalibrateWithTool, CalibrateWithTool, Auto]
+
+  - [Calibrate, OK, ChangeTool, Auto]
+  - [CalibrateWithTool, OK, InitializeRobots::Load, Auto]
+
   - [ChangeTool, ToolChanged, InitializeRobots::Load, Auto]
 
 
@@ -133,36 +290,6 @@ Real::InitializeRobots::Load:
       stiffness: 1
       load: true
       reset_mbc: false
-  AddCollisions:
-    - r1: panda_femur
-      r2: panda_tibia
-      collisions:
-        - body1: femur
-          body2: tibia
-          iDist: 0.02
-          sDist: 0.005
-        - body1: femur
-          body2: support_tibia
-        - body1: support_femur
-          body2: tibia
-        - body1: support_femur
-          body2: support_tibia
-        - body1: panda_link*
-          body2: panda_link*
-  RemoveCollisionsAfter:
-    - r1: panda_femur
-      r2: panda_tibia
-      collisions:
-        - body1: femur
-          body2: tibia
-        - body1: femur
-          body2: support_tibia
-        - body1: support_femur
-          body2: tibia
-        - body1: support_femur
-          body2: support_tibia
-        - body1: panda_link*
-          body2: panda_link*
 
 Real::InitializeRobots::NoLoad:
   base: InitializeRobots::Load

@@ -1,6 +1,7 @@
 #pragma once
+#include <mc_panda/panda.h>
+#include <mc_rbdyn/RobotModuleMacros.h>
 #include "config_panda_brace.h"
-#include "module.h"
 
 namespace mc_robots
 {

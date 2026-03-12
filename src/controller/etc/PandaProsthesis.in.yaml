@@ -17,69 +17,408 @@ StatesFiles:
 # If true, state factory will be more verbose
 VerboseStateFactory: false
 
+# TODO: Change this when changing robot
+# ControllerName: bonetag_ur10
+ControllerName: bonetag_panda
+
 TrajectoryLoaders:
   BoneTag:
     directory: "@TRAJECTORY_DIR@"
 
 trajectory_dir: "@TRAJECTORY_DIR@/bonetag"
-results_dir: "@RESULTS_DIR@/bonetag"
 offsets:
   femur:
     translation: [0, 0, 0.0]
   tibia:
-    translation: [0, 0, 0.02]
+    translation: [0, 0, 0.01]
 # Additional robots to load
 robots:
   panda_femur:
     init_pos:
       translation: [0,0,0]
-    frames:
-      - name: FemurCalibration
-        parent: support_femur
-        X_p_f:
-          translation: [0, 0, -0.215]
-          rotation: [3.14, 0, 0.0]
-      # Frame above the surface of the Femur
-      # This should contain the desired offset distance between the femur and the joint center
-      - name: Femur
-        parent: support_femur
-        # plastic support 0.215
-        # metal prosthesis 0.1
-        X_p_f:
-          translation: [0, 0, -0.225]
-          rotation: [3.14, 0, 0]
+    CollisionBehavior:
+      # Changes the collision behavior, see franka::Robot documentation for details
+      # Set common torque and force boundaries for acceleration/deceleration and constant velocity movement phases.
+      #
+      # Forces or torques between lower and upper threshold are shown as contacts in the RobotState. Forces or torques above the upper threshold are registered as collision and cause the robot to stop moving.
+      #
+      # Parameters:
+      # - lower_torque_thresholds	Contact torque thresholds for each joint in [Nm].
+      # - upper_torque_thresholds	Collision torque thresholds for each joint in [Nm].
+      # - lower_force_thresholds	Contact force thresholds for (x,y,z,R,P,Y) in [N].
+      # - upper_force_thresholds	Collision force threshnolds for (x,y,z,R,P,Y) in [N].
+      lower_torque_thresholds: [-87, -87, -87, -87, -11, -11, -11]
+      upper_torque_thresholds: [87, 87, 87, 87, 11, 11, 11]
+      lower_force_thresholds: [-100, -100, -100, -100, -100, -100]
+      upper_force_thresholds: [100, 100, 100, 100, 100, 100]
   panda_tibia:
-    module: PandaProsthesis::Tibia
-    frames:
-      - name: TibiaCalibration
-        parent: panda_link8
-        X_p_f:
-          translation: [0, 0.095, 0.225] # assuming 2cm height for the calibration tool
-          rotation: [1.57, 0, 0]
-      # Frame above the surface of the Tibia
-      # This should contain the desired offset distance between the tibia and the joint center
-      - name: Tibia
-        parent: panda_link8
-        # Plastic base height: 0.065
-        # Metal support: 0.01
-        X_p_f:
-          translation: [0, 0.075, 0.23]
-          rotation: [1.57, 0, 0]
+    module: Panda7LIRMM_2::Default::BoneTag::Tibia
+    # module: Panda7LIRMMDefault::BoneTag::Tibia
+    # module: Panda7LIRMMDefault::TAA::Talar
+    # module: Panda7LIRMMDefault::TSA::Glenoid
+    # module: Panda7LIRMMDefault::TSA::Humerus
+    # module: UR10::BoneTag::Tibia
+    CollisionBehavior:
+      # See panda_femur for details
+      lower_torque_thresholds: [-87, -87, -87, -87, -11, -11, -11]
+      upper_torque_thresholds: [87, 87, 87, 87, 11, 11, 11]
+      lower_force_thresholds: [-100, -100, -100, -100, -100, -100]
+      upper_force_thresholds: [100, 100, 100, 100, 100, 100]
+  # bonetag_knee_brace:
+  #   module: BoneTag::KneeBrace
+  #   init_pos:
+  #     translation: [-0.3051, -0.4894, 1.0018]
+  #     rotation: [0, 3.14, 1.57]
+  # bonetag_knee_brace_left:
+  #   visual:
+  #     name: bonetag_knee_brace_left
+  #     origin:
+  #       translation: [0, 0, 0]
+  #       rotation: [0, 0, 0]
+  #     material:
+  #       color:
+  #         r: 1
+  #         g: 0
+  #         b: 0
+  #         a: 1
+  #     geometry:
+  #       cylinder:
+  #         radius: 0.06
+  #         length: 0.002
+  #     inertia:
+  #       mass: 0.5
 # General constraints, always on
 constraints:
 - type: contact
-#- type: kinematics
-#  robot: panda_femur
-#  damper: [0.1, 0.01, 0.5]
-#  velocityPercent: 0.9
-#- type: kinematics
-#  robot: panda_tibia
-#  damper: [0.1, 0.01, 0.5]
+- type: kinematics
+  robot: panda_femur
+  damper: [0.1, 0.01, 0.5]
+  velocityPercent: 0.2
+- type: kinematics
+  robot: panda_tibia
+  damper: [0.1, 0.01, 0.5]
+  velocityPercent: 0.2
 # Collision constraint
 collisions:
+# #1) AutoCollision Constraints (
+# PS. commented out to avoid duplications later + kinematics const should be enough
+# - type: collision
+#   r1: panda_tibia
+#   r2: panda_tibia
+#   useMinimal: true
+# - type: collision
+#   r1: panda_femur
+#   r2: panda_femur
+#   useMinimal: true
+#2) Femur-Tibia Collision Constraints
 - type: collision
-  robot: panda_tibia
+  r1: panda_femur
+  r2: panda_tibia
+  collisions:
+    # femur components with tibia
+    - body1: femur
+      body2: tibia
+      iDist: 0.01
+      sDist: 0.004
+    - body1: support_femur
+      body2: tibia
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link4
+      body2: tibia
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link5
+      body2: tibia
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link6
+      body2: tibia
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link7
+      body2: tibia
+      iDist: 0.01
+      sDist: 0.002
+    # femur components with support_tibia
+    - body1: femur
+      body2: support_tibia
+      iDist: 0.01
+      sDist: 0.001
+    - body1: support_femur
+      body2: support_tibia
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link4
+      body2: support_tibia
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link5
+      body2: support_tibia
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link6
+      body2: support_tibia
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link7
+      body2: support_tibia
+      iDist: 0.01
+      sDist: 0.002
+    # femur components with tibia convex_panda_link4
+    - body1: femur
+      body2: convex_panda_link4
+      iDist: 0.01
+      sDist: 0.001
+    - body1: support_femur
+      body2: convex_panda_link4
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link4
+      body2: convex_panda_link4
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link5
+      body2: convex_panda_link4
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link6
+      body2: convex_panda_link4
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link7
+      body2: convex_panda_link4
+      iDist: 0.01
+      sDist: 0.002
+    # femur components with tibia convex_panda_link5
+    - body1: femur
+      body2: convex_panda_link5
+      iDist: 0.01
+      sDist: 0.001
+    - body1: support_femur
+      body2: convex_panda_link5
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link4
+      body2: convex_panda_link5
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link5
+      body2: convex_panda_link5
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link6
+      body2: convex_panda_link5
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link7
+      body2: convex_panda_link5
+      iDist: 0.01
+      sDist: 0.002
+    # femur components with tibia convex_panda_link6
+    - body1: femur
+      body2: convex_panda_link6
+      iDist: 0.01
+      sDist: 0.001
+    - body1: support_femur
+      body2: convex_panda_link6
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link4
+      body2: convex_panda_link6
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link5
+      body2: convex_panda_link6
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link6
+      body2: convex_panda_link6
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link7
+      body2: convex_panda_link6
+      iDist: 0.01
+      sDist: 0.002
+    # femur components with tibia convex_panda_link7
+    - body1: femur
+      body2: convex_panda_link7
+      iDist: 0.01
+      sDist: 0.001
+    - body1: support_femur
+      body2: convex_panda_link7
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link4
+      body2: convex_panda_link7
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link5
+      body2: convex_panda_link7
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link6
+      body2: convex_panda_link7
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link7
+      body2: convex_panda_link7
+      iDist: 0.01
+      sDist: 0.002
+      iDist: 0.01
+      sDist: 0.002
   useMinimal: true
+#3) Femur-Table & Tibia-Table Collision Constraints
+- type: collision
+  r1: panda_femur
+  r2: panda_femur
+  collisions:
+    - body1: femur
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+    - body1: support_femur
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link4
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link5
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link6
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link7
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+  useMinimal: true
+- type: collision
+  r1: panda_tibia
+  r2: panda_tibia
+  collisions:
+    - body1: tibia
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+    - body1: support_tibia
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link4
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link5
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link6
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+    - body1: convex_panda_link7
+      body2: robot_support
+      iDist: 0.01
+      sDist: 0.002
+  useMinimal: true
+#4) Femur-KneeBrace & Tibia-KneeBrace Collision Constraints
+# PS. no need to add convex_panda_link4 here
+# - type: collision
+#   r1: panda_femur
+#   r2: bonetag_knee_brace
+#   collisions:
+#     - body1: femur
+#       body2: bonetag_knee_brace_left
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: support_femur
+#       body2: bonetag_knee_brace_left
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link5
+#       body2: bonetag_knee_brace_left
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link6
+#       body2: bonetag_knee_brace_left
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link7
+#       body2: bonetag_knee_brace_left
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: femur
+#       body2: bonetag_knee_brace_right
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: support_femur
+#       body2: bonetag_knee_brace_right
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link5
+#       body2: bonetag_knee_brace_right
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link6
+#       body2: bonetag_knee_brace_right
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link7
+#       body2: bonetag_knee_brace_right
+#       iDist: 0.01
+#       sDist: 0.001
+#   useMinimal: true
+# - type: collision
+#   r1: panda_tibia
+#   r2: bonetag_knee_brace
+#   collisions:
+#     - body1: tibia
+#       body2: bonetag_knee_brace_left
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: support_tibia
+#       body2: bonetag_knee_brace_left
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link5
+#       body2: bonetag_knee_brace_left
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link6
+#       body2: bonetag_knee_brace_left
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link7
+#       body2: bonetag_knee_brace_left
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: tibia
+#       body2: bonetag_knee_brace_right
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: support_tibia
+#       body2: bonetag_knee_brace_right
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link5
+#       body2: bonetag_knee_brace_right
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link6
+#       body2: bonetag_knee_brace_right
+#       iDist: 0.01
+#       sDist: 0.001
+#     - body1: convex_panda_link7
+#       body2: bonetag_knee_brace_right
+#       iDist: 0.01
+#       sDist: 0.001
+#   useMinimal: true
 
 ObserverPipelines:
   - name: PandaFemur
@@ -91,19 +430,29 @@ ObserverPipelines:
     - type: Encoder
       config:
         robot: panda_femur
-        position: control #encoderValues
-        velocity: control #encoderFiniteDifferences
+        position: encoderValues
+        #velocity: encoderFiniteDifferences
+        #velocity: encoderVelocities
+        velocity: control
   - name: PandaTibia
     observers:
     - type: BodySensor
       config:
         robot: panda_tibia
         method: control
+        log:
+          position: true
+          velocity: true
     - type: Encoder
       config:
         robot: panda_tibia
-        position: control #encoderValues
-        velocity: control #encoderFiniteDifferences
+        position: encoderValues
+        #velocity: encoderFiniteDifferences
+        # velocity: encoderVelocities
+        velocity: control # encoderVelocities
+        log:
+          position: true
+          velocity: true
 
 # Initial set of contacts
 contacts: []
@@ -117,12 +466,14 @@ states:
       - ["Start from current configuration", "StartFromCurrent"]
 
 Plugins: [BoneTagSerialPlugin]
+# Plugins: [ProtoTMRPlugin]
 
 transitions:
   - [ChooseMode, Simulation, Simulation, Auto]
+  - [ChooseMode, SimulationFast, SimulationFast, Auto]
   - [ChooseMode, Real, Real, Auto]
 
 # Initial state
 init: ChooseMode
 # Store the location of configuration files
-ETC_DIR: "@CMAKE_CURRENT_SOURCE_DIR@/etc"
+CALIB_DIR_INIT: "@CALIB_DIR_INIT@"

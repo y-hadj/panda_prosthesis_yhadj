@@ -4,13 +4,20 @@
 #include <mc_control/fsm/State.h>
 #include <mc_tasks/TransformTask.h>
 #include <mc_trajectory/SequenceInterpolator.h>
-#include "../../bonetag/BoneTagSerial.h"
+// #include "../../bonetag/BoneTagSerial.h"
+#include "../../plugins/ProtoTMR/Serial.h"
+#include "../../plugins/bonetag/BoneTagSerial.h"
+#include <condition_variable>
 #include <deque>
+#include <mutex>
+#include <thread>
 
 struct ReadCSV
 {
   void clear();
   void load(const std::string & path);
+
+  void generateFromConfiguration(const mc_rtc::Configuration & config);
 
   std::deque<Eigen::Vector3d> femurTranslationVector;
   std::deque<Eigen::Vector3d> femurRotationVector;
@@ -26,8 +33,10 @@ struct PTransformInterpolator
   }
 };
 
+template<typename SensorDataT>
 struct Result
 {
+  unsigned int controllerIter;
   // Robot effective motion
   Eigen::Vector3d femurRotation;
   Eigen::Vector3d tibiaRotation;
@@ -35,28 +44,41 @@ struct Result
   Eigen::Vector3d tibiaTranslation;
 
   // Sensor measurements
-  io::BoneTagSerial::Data sensorData;
-
-  std::string to_csv() const;
+  SensorDataT sensorData;
 };
 
+struct ProtoTMRResult : Result<io::Serial::TimedRawData>
+{
+};
+
+struct BoneTagResult : Result<io::BoneTagSerial::Data>
+{
+};
+
+template<typename ResultT>
 struct ResultHandler
 {
-  void write_csv(const std::string & path);
-
   void clear()
   {
     results_.clear();
   }
 
-  void addResult(const Result & result)
+  void addResult(const ResultT & result)
   {
     results_.push_back(result);
   }
 
+  inline const std::vector<ResultT> results() const noexcept
+  {
+    return results_;
+  }
+
 protected:
-  std::vector<Result> results_;
+  std::vector<ResultT> results_;
 };
+
+void write_csv_bonetag();
+void write_csv_prototmr();
 
 struct ManipulateKnee : mc_control::fsm::State
 {
@@ -84,15 +106,22 @@ protected:
   void stop()
   {
     play_ = false;
-    saveResults();
+    triggerSaveResults(true);
+    resultsBoneTag_.clear();
+    resultsProtoTMR_.clear();
     trajOffsets_.reset();
   }
 
-  void saveResults()
-  {
-    results_.write_csv(resultPath_);
-    results_.clear();
-  }
+  /**
+   * Saving is done in a thread to avoid slowing down the real-time control
+   *
+   * This function copies the available results data (locks on saveResultsMutex_, thread-safe)
+   * Calling triggerSaveResults() will notify the saveResultsThread_ that new data is available to save. When
+   * force=false, it will only trigger when there are a multiple of resultSaveAfterN results available.
+   *
+   * @params force Force copying the latest available results (regardless of resultSaveAfterN value)
+   */
+  void triggerSaveResults(bool force = false);
 
   inline void forceNext() noexcept
   {
@@ -129,6 +158,8 @@ protected:
 
   /// Returns true when all measurements have been taken
   bool measure(mc_control::fsm::Controller & ctl);
+  void measure_bonetag(mc_control::fsm::Controller & ctl);
+  void measure_prototmr(mc_control::fsm::Controller & ctl);
 
 protected:
   ReadCSV file_;
@@ -136,16 +167,43 @@ protected:
   std::string trajectory_file_ = "";
 
   bool play_ = false;
+  bool manualLogging_ = false;
   bool next_ = true;
+  bool hasConverged_ = false;
+
+  bool gotMeasurement_ = false;
+  std::string sensorType = "None";
   size_t iter_ = 0;
   size_t iterRate_ = 1;
-  double translationTreshold_ = 0.1; ///< Convergence threshold on translation [mm]
-  double rotationTreshold_ = 0.1; ///< Convergence threshold on rotation [deg]
 
-  unsigned desiredSamples_ = 10;
+  struct Convergence
+  {
+    bool tibiaAngularError = true;
+    bool tibiaLinearError = true;
+    bool femurAngularError = true;
+    bool femurLinearError = true;
+    bool femurVelocityError = true;
+    bool tibiaVelocityError = true;
+
+    double translationTreshold_ = 0.1; ///< Convergence threshold on translation [mm]
+    double rotationTreshold_ = 0.1; ///< Convergence threshold on rotation [deg]
+    double velocityThreshold_ = 0.001; ///< Convergence threshold on velocity [m/s]
+
+    sva::MotionVecd tibiaError_ = sva::MotionVecd::Zero();
+    sva::MotionVecd femurError_ = sva::MotionVecd::Zero();
+    sva::MotionVecd tibiaVelocityError_ = sva::MotionVecd::Zero();
+    sva::MotionVecd femurVelocityError_ = sva::MotionVecd::Zero();
+  } convergence_;
+
+  unsigned desiredSamples_ = 1;
   unsigned measuredSamples_ = 0;
+  bool newFrameRequested_ = false;
 
-  ResultHandler results_;
+  ResultHandler<ProtoTMRResult> resultsProtoTMR_;
+  ResultHandler<BoneTagResult> resultsBoneTag_;
+  std::vector<ProtoTMRResult> resultsProtoTMRCopy_; // copy for saving
+  std::vector<BoneTagResult> resultsBoneTagCopy_; // copy for saving
+  unsigned int resultSaveAfterN = 10; // save after 100 points
   std::string results_dir_ = "/tmp";
   std::string resultPath_ = "/tmp/BoneTagResults.csv";
 
@@ -225,8 +283,6 @@ protected:
 
   Eigen::Vector3d tibiaTranslation_ = Eigen::Vector3d::Zero(); ///< Desired Joint translation in [mm]
   Eigen::Vector3d tibiaTranslationActual_ = Eigen::Vector3d::Zero(); ///< Current joint translation in [mm]
-  sva::MotionVecd tibiaError_ = sva::MotionVecd::Zero();
-  sva::MotionVecd femurError_ = sva::MotionVecd::Zero();
   Eigen::Vector3d minTibiaTranslation_{-20, -20, -10}; ///< Min translation [mm]
   Eigen::Vector3d maxTibiaTranslation_ = {20, 20, 10}; ///< Max translation [mm]
 
@@ -247,6 +303,8 @@ protected:
 
   std::shared_ptr<mc_tasks::TransformTask> tibia_task_;
   std::shared_ptr<mc_tasks::TransformTask> femur_task_;
+  mc_trajectory::LinearInterpolation<sva::MotionVecd> stiffnessInterp_;
+  mc_trajectory::LinearInterpolation<Eigen::Vector6d> dimWeightInterp_;
   bool continuous_ = false;
   bool measure_ = true;
 
@@ -255,4 +313,13 @@ protected:
   double offsetDuration_ = 2;
   double tibiaOffsetInterpolationTime_ = 0;
   double femurOffsetInterpolationTime_ = 0;
+
+  unsigned int controllerIter_ = 0;
+
+  /** Thread for saving results */
+  mutable std::mutex saveResultsMutex_; // should be locked when accessing resultsBoneTagCopy_ and resultsProtoTMRCopy_;
+  std::condition_variable saveResultsCv_; // call notify_one on this condition variable to wake up the thread
+  bool saveResultsThreadRunning_ = false;
+  std::thread saveResultsThread_;
+  void saveResultsThread();
 };

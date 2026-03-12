@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mc_control/fsm/State.h>
+#include <mc_tasks/TransformTask.h>
 #include <mc_trajectory/SequenceInterpolator.h>
 
 struct Initial : mc_control::fsm::State
@@ -15,7 +16,7 @@ struct Initial : mc_control::fsm::State
 
 private:
   std::vector<std::string> category_{};
-  std::string robot_;
+  std::string robotName_;
   std::string etc_file_;
   double duration_ = 2;
   using PostureInterpolator = mc_trajectory::SequenceInterpolator<Eigen::VectorXd>;
@@ -29,4 +30,7 @@ private:
   sva::PTransformd initial_pose_ = sva::PTransformd::Identity();
   bool done_ = false;
   double t_ = 0;
+
+  bool transformTaskActive_ = false;
+  std::shared_ptr<mc_tasks::TransformTask> transformTask_ = nullptr;
 };

@@ -1,0 +1,28 @@
+# Location of data files, all path in the YAML file are
+# interpreted relative to this path unless they are absolute paths
+path: "@MODULE_INSTALL_LOCATION@"
+name: taa_tibia
+urdf_path: urdf/taa_tibia.urdf
+rsdf_dir: rsdf/taa_tibia
+fixed: true
+
+# convexHulls are auto-generated
+
+# Default orientation (quaternion) and position of the floating base
+default_attitude: [1., 0., 0., 0., 0., 0., 0.]
+
+frames:
+  - name: FemurCalibration
+    parent: taa_tibia
+    X_p_f:
+      translation: [0, 0, 0.282] # FIXME
+      rotation: [0, 0, 0.3] # FIXME
+  # Frame above the surface of the Femur
+  # This should contain the desired offset distance between the femur and the joint center
+  - name: Femur
+    parent: taa_tibia
+    # plastic support 0.215
+    # metal prosthesis 0.1
+    X_p_f:
+      translation: [0, 0, 0.282] # FIXME
+      rotation: [0, 0, 0.3] # FIXME

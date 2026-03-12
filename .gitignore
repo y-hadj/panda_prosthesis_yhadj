@@ -1,5 +1,11 @@
 build
 build/
+build2/
 .cache/
 .ccls-cache/
 compile_commands.json
+core.*
+data/results
+.vscode/
+data/trajectories
+imgui.ini

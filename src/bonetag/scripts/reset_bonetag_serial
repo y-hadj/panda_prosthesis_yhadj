@@ -1,5 +1,0 @@
-#!/bin/bash
-
-screen -dm /dev/ttyUSB0 115200
-sleep 1
-screen -X quit

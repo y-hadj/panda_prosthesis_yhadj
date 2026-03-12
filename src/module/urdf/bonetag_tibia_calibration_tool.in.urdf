@@ -1,0 +1,14 @@
+<robot name="bonetag_tibia_calibration_tool">
+    <link name="bonetag_tibia_calibration_tool">
+        <visual>
+            <geometry>
+                <mesh filename="file://@MODULE_INSTALL_LOCATION@/meshes/bonetag_tibia/calibration_tool.stl" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="file://@MODULE_INSTALL_LOCATION@/meshes/bonetag_tibia/calibration_tool.stl" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </collision>
+    </link>
+</robot>

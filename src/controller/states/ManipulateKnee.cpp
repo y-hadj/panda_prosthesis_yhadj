@@ -5,26 +5,12 @@
 #include <mc_rtc/gui/NumberInput.h>
 #include <mc_rtc/io_utils.h>
 #include <mc_tasks/MetaTaskLoader.h>
+#include <mc_trajectory/LinearInterpolation.h>
 #include <boost/filesystem.hpp>
 #include <3rd-party/csv.h>
+#include <utils.h>
 
 namespace fs = boost::filesystem;
-
-double truncate(double value, double precision = 2)
-{
-  return (floor((value * pow(10, precision) + 0.5)) / pow(10, precision));
-}
-
-template<typename VectorT>
-VectorT truncate(const VectorT & value, double precision = 2)
-{
-  VectorT r;
-  for(unsigned i = 0; i < value.size(); ++i)
-  {
-    r[i] = truncate(value[i], precision);
-  }
-  return r;
-}
 
 /**
  * \brief   Return the filenames of all files that have the specified extension
@@ -73,30 +59,54 @@ void ReadCSV::load(const std::string & path)
   }
 }
 
-std::string Result::to_csv() const
+void ReadCSV::generateFromConfiguration(const mc_rtc::Configuration & config)
 {
-  return mc_rtc::io::to_string(
-             std::vector<double>{
-                 femurRotation.x(),
-                 femurRotation.y(),
-                 femurRotation.z(),
-                 tibiaRotation.x(),
-                 tibiaRotation.y(),
-                 tibiaRotation.z(),
-                 femurTranslation.x(),
-                 femurTranslation.y(),
-                 femurTranslation.z(),
-                 tibiaTranslation.x(),
-                 tibiaTranslation.y(),
-                 tibiaTranslation.z(),
-             },
-             ",")
-         + "," + mc_rtc::io::to_string(sensorData);
+  int waypoints = config("Waypoints");
+
+  Eigen::Vector3d minTibiaRot = config("MinTibiaRotation");
+  Eigen::Vector3d maxTibiaRot = config("MaxTibiaRotation");
+  Eigen::Vector3d minFemurRot = config("MinFemurRotation");
+  Eigen::Vector3d maxFemurRot = config("MaxFemurRotation");
+  Eigen::Vector3d minTibiaTrans = config("MinTibiaTranslation");
+  Eigen::Vector3d maxTibiaTrans = config("MaxTibiaTranslation");
+  Eigen::Vector3d minFemurTrans = config("minFemurTranslation");
+  Eigen::Vector3d maxFemurTrans = config("maxFemurTranslation");
+
+  mc_trajectory::LinearInterpolation<Eigen::Vector3d> interp;
+
+  femurTranslationVector.clear();
+  tibiaTranslationVector.clear();
+  femurRotationVector.clear();
+  tibiaRotationVector.clear();
+
+  // Split waypoints between the two segments
+  int n1 = waypoints / 2; // zero to min
+  int n2 = waypoints - n1; // min to max
+
+  // Interpolate from zero to min
+  for(int i = 0; i < n1; ++i)
+  {
+    double t = n1 == 1 ? 0.0 : static_cast<double>(i) / (n1 - 1);
+    femurRotationVector.push_back(interp(Eigen::Vector3d::Zero(), minFemurRot, t));
+    tibiaRotationVector.push_back(interp(Eigen::Vector3d::Zero(), minTibiaRot, t));
+    femurTranslationVector.push_back(interp(Eigen::Vector3d::Zero(), minFemurTrans, t));
+    tibiaTranslationVector.push_back(interp(Eigen::Vector3d::Zero(), minTibiaTrans, t));
+  }
+
+  // Interpolate from min to max
+  for(int i = 0; i < n2; ++i)
+  {
+    double t = n2 == 1 ? 0.0 : static_cast<double>(i) / (n2 - 1);
+    femurRotationVector.push_back(interp(minFemurRot, maxFemurRot, t));
+    tibiaRotationVector.push_back(interp(minTibiaRot, maxTibiaRot, t));
+    femurTranslationVector.push_back(interp(minFemurTrans, maxFemurTrans, t));
+    tibiaTranslationVector.push_back(interp(minTibiaTrans, maxTibiaTrans, t));
+  }
 }
 
-void ResultHandler::write_csv(const std::string & path)
+void write_csv_bonetag(std::vector<BoneTagResult> results, const std::string & path)
 {
-  if(results_.empty()) return;
+  if(results.empty()) return;
   std::ofstream csv;
   csv.open(path);
   if(!csv)
@@ -104,21 +114,178 @@ void ResultHandler::write_csv(const std::string & path)
     mc_rtc::log::error("Failed to write results to CSV file {}", path);
   }
 
-  csv << "femur_tangage,femur_roulis,femur_lacet,tibia_tangage,tibia_roulis,tibia_lacet,femur_x,femur_y,femur_z,tibia_"
-         "x,tibia_y,tibia_z,sensor_0,sensor_1,sensor_2,sensor_3,sensor_4,sensor_5,sensor_6,sensor_7,sensor_8,sensor_9"
-      << std::endl;
+  csv << "iteration,femur_tangage,femur_roulis,femur_lacet,"
+         "tibia_tangage,tibia_roulis,tibia_lacet,"
+         "femur_x,femur_y,femur_z,"
+         "tibia_x,tibia_y,tibia_z";
 
-  for(const auto & result : results_)
+  // write sensor csv header
+  for(size_t i = 0; i < results.front().sensorData.size(); ++i)
   {
-    csv << result.to_csv() << std::endl;
+    csv << ",sensor_" << i;
+  }
+  csv << std::endl;
+
+  for(const auto & result : results)
+  {
+    csv << result.controllerIter << ","
+        << mc_rtc::io::to_string(
+               std::vector<double>{
+                   result.femurRotation.x(),
+                   result.femurRotation.y(),
+                   result.femurRotation.z(),
+                   result.tibiaRotation.x(),
+                   result.tibiaRotation.y(),
+                   result.tibiaRotation.z(),
+                   result.femurTranslation.x(),
+                   result.femurTranslation.y(),
+                   result.femurTranslation.z(),
+                   result.tibiaTranslation.x(),
+                   result.tibiaTranslation.y(),
+                   result.tibiaTranslation.z(),
+               },
+               ",")
+        << "," << mc_rtc::io::to_string(result.sensorData, ",") << std::endl;
   }
 
   csv.close();
   mc_rtc::log::success("Results written to {}", path);
 }
 
+void write_csv_prototmr(const std::vector<ProtoTMRResult> & results, const std::string & path)
+{
+  if(results.empty()) return;
+  std::ofstream csv;
+  csv.open(path);
+  if(!csv)
+  {
+    mc_rtc::log::error("Failed to write results to CSV file {}", path);
+  }
+
+  csv << "iteration,start_measurement_time[s],end_measurement_time[s],femur_tangage,femur_roulis,femur_lacet,"
+         "tibia_tangage,tibia_roulis,tibia_lacet,"
+         "femur_x,femur_y,femur_z,"
+         "tibia_x,tibia_y,tibia_z,sensor_id";
+
+  size_t dataSize = results.front().sensorData.data.size();
+  size_t halfSize = dataSize / 2;
+
+  for(size_t i = 0; i < halfSize - 1; ++i)
+  {
+    csv << ",sensor_time_" << i << ",sensor_value_" << i;
+  }
+  csv << std::endl;
+
+  // write sensor data. N lines per sensor
+  for(const auto & result : results)
+  {
+    const auto & sensorData = result.sensorData; // full sensor frame
+    int sensorId = 0;
+    for(const auto & perSensorData : sensorData.data)
+    {
+      csv << result.controllerIter << "," << sensorData.start_time_ms.count() / 1000.0 << ","
+          << sensorData.end_time_ms.count() / 1000.0 << ","
+          << mc_rtc::io::to_string(
+                 std::vector<double>{
+                     result.femurRotation.x(),
+                     result.femurRotation.y(),
+                     result.femurRotation.z(),
+                     result.tibiaRotation.x(),
+                     result.tibiaRotation.y(),
+                     result.tibiaRotation.z(),
+                     result.femurTranslation.x(),
+                     result.femurTranslation.y(),
+                     result.femurTranslation.z(),
+                     result.tibiaTranslation.x(),
+                     result.tibiaTranslation.y(),
+                     result.tibiaTranslation.z(),
+                 },
+                 ",")
+          << "," << sensorId++ << "," << mc_rtc::io::to_string(perSensorData, ",") << std::endl;
+    }
+  }
+
+  csv.close();
+  mc_rtc::log::success("Results written to {}", path);
+}
+
+void ManipulateKnee::triggerSaveResults(bool force)
+{
+  std::lock_guard<std::mutex> lock(saveResultsMutex_);
+  if(sensorType == "ProtoTMRPlugin")
+  {
+    auto n = resultsProtoTMR_.results().size();
+    if(n != 0 && (force || n % resultSaveAfterN == 0))
+    {
+      resultsProtoTMRCopy_ = resultsProtoTMR_.results();
+      mc_rtc::log::info("[{}] Triggering results save for ProtoTMRPlugin, {} results to save", name(), n);
+      saveResultsCv_.notify_one();
+    }
+  }
+  else
+  {
+    auto n = resultsBoneTag_.results().size();
+    if(n != 0 && (force || n % resultSaveAfterN == 0))
+    {
+      resultsBoneTagCopy_ = resultsBoneTag_.results();
+      mc_rtc::log::info("[{}] Triggering results save for BoneTagSerialPlugin, {} results to save", name(), n);
+      saveResultsCv_.notify_one();
+    }
+  }
+}
+
+void ManipulateKnee::saveResultsThread()
+{
+  auto makeResultPath = [](const std::string & resultPath, size_t resultSize)
+  {
+    boost::filesystem::path origPath(resultPath);
+    boost::filesystem::path newPath =
+        origPath.parent_path() / (origPath.stem().string() + "_" + std::to_string(resultSize) + ".csv");
+    return newPath.string();
+  };
+  std::unique_lock<std::mutex> lock(saveResultsMutex_);
+  while(saveResultsThreadRunning_)
+  {
+    saveResultsCv_.wait(lock);
+
+    if(sensorType == "ProtoTMRPlugin")
+    {
+      write_csv_prototmr(resultsProtoTMRCopy_, makeResultPath(resultPath_, resultsProtoTMRCopy_.size()));
+    }
+    else if(sensorType == "BoneTagSerialPlugin")
+    {
+      write_csv_bonetag(resultsBoneTagCopy_, makeResultPath(resultPath_, resultsBoneTagCopy_.size()));
+    }
+    else
+    {
+      mc_rtc::log::warning("[{}] Unknown sensor type '{}', cannot save results", name(), sensorType);
+      return;
+    }
+  }
+}
+
 void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
 {
+  saveResultsThreadRunning_ = true;
+  saveResultsThread_ = std::thread(&ManipulateKnee::saveResultsThread, this);
+
+  if(ctl.datastore().has("BoneTagSerialPlugin::Connected")
+     && ctl.datastore().call<bool>("BoneTagSerialPlugin::Connected"))
+  {
+    sensorType = "BoneTagSerialPlugin";
+    mc_rtc::log::success("[{}] Detected connected sensor type: {}", name(), sensorType);
+  }
+  else if(ctl.datastore().has("ProtoTMRPlugin::Connected") && ctl.datastore().call<bool>("ProtoTMRPlugin::Connected"))
+  {
+    sensorType = "ProtoTMRPlugin";
+    mc_rtc::log::success("[{}] Detected connected sensor type: {}", name(), sensorType);
+  }
+  else
+  {
+    mc_rtc::log::warning("[{}] No sensor type found in datastore, defaulting to 'None'", name());
+    measure_ = false;
+  }
+
   if(config_.has("femur"))
   {
     const auto & c = config_("femur");
@@ -140,21 +307,27 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
   setRate(config_("rate", 0.2), ctl.timeStep);
   config_("samples", desiredSamples_);
 
-  if(config_.has("thresholds"))
+  if(auto convergenceC = config_.find("convergence"))
   {
-    auto c = config_("thresholds");
-    if(c.has("translation"))
+    auto & c = convergence_;
+    (*convergenceC)("tibiaAngularError", c.tibiaAngularError);
+    (*convergenceC)("tibiaLinearError", c.tibiaLinearError);
+    (*convergenceC)("femurAngularError", c.femurAngularError);
+    (*convergenceC)("femurLinearError", c.femurLinearError);
+    (*convergenceC)("femurVelocityError", c.femurVelocityError);
+    (*convergenceC)("tibiaVelocityError", c.tibiaVelocityError);
+
+    if(auto thresholds = convergenceC->find("thresholds"))
     {
-      translationTreshold_ = c("translation");
-    }
-    if(c.has("rotation"))
-    {
-      rotationTreshold_ = c("rotation");
+      auto t = *thresholds;
+      t("translation", c.translationTreshold_);
+      t("rotation", c.rotationTreshold_);
+      t("velocity", c.velocityThreshold_);
     }
   }
 
   ctl.config()("trajectory_dir", trajectory_dir_);
-  ctl.config()("results_dir", results_dir_);
+  results_dir_ = get_or_create_dir("results");
 
   auto make_input = [this](mc_rtc::gui::StateBuilder & gui, std::vector<std::string> category, const std::string & name,
                            const std::string & title, std::vector<std::string> axes, Eigen::Vector3d & rotation,
@@ -299,12 +472,57 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
                               trajectory_file_ = name;
                               file_.load(trajectory_dir_ + "/" + name);
                             }),
+                        mc_rtc::gui::Button("Stop", [this]() { stop(); }),
                         mc_rtc::gui::Button("Play",
                                             [this]()
                                             {
                                               stop();
-                                              file_.load(trajectory_dir_ + "/" + trajectory_file_);
+                                              if(trajectory_file_ != "custom.csv")
+                                              {
+                                                file_.load(trajectory_dir_ + "/" + trajectory_file_);
+                                              }
                                               play();
+                                            }));
+  ctl.gui()->addElement(this, {"ManipulateKnee", "Trajectory", "Generate"},
+                        mc_rtc::gui::Form(
+                            "Generate trajectory",
+                            [this](const mc_rtc::Configuration & data)
+                            {
+                              mc_rtc::log::info("Generating trajectory\n{}", data.dump(true, true));
+                              trajectory_file_ = "custom.csv";
+                              file_.generateFromConfiguration(data);
+                            },
+                            mc_rtc::gui::FormIntegerInput("Waypoints", false, 50),
+                            mc_rtc::gui::FormArrayInput("MinTibiaRotation", false, minTibiaRotation_),
+                            mc_rtc::gui::FormArrayInput("MaxTibiaRotation", false, maxTibiaRotation_),
+                            mc_rtc::gui::FormArrayInput("MinFemurRotation", false, minFemurRotation_),
+                            mc_rtc::gui::FormArrayInput("MaxFemurRotation", false, maxFemurRotation_),
+                            mc_rtc::gui::FormArrayInput("MinTibiaTranslation", false, minTibiaTranslation_),
+                            mc_rtc::gui::FormArrayInput("MaxTibiaTranslation", false, maxTibiaTranslation_),
+                            mc_rtc::gui::FormArrayInput("minFemurTranslation", false, minFemurTranslation_),
+                            mc_rtc::gui::FormArrayInput("maxFemurTranslation", false, maxFemurTranslation_)));
+
+  ctl.gui()->addElement(this, {"ManipulateKnee"}, mc_rtc::gui::ElementsStacking::Horizontal,
+                        mc_rtc::gui::Checkbox(
+                            "Manual Logging", [this]() { return manualLogging_; }, [this]() {}),
+                        mc_rtc::gui::Button("Start Logging",
+                                            [this]()
+                                            {
+                                              mc_rtc::log::info("Start manual logging");
+                                              manualLogging_ = true;
+                                            }),
+                        mc_rtc::gui::Button("Stop and Save",
+                                            [this]()
+                                            {
+                                              mc_rtc::log::info("Saving manual logging results");
+                                              manualLogging_ = false;
+                                              triggerSaveResults(true);
+                                            }),
+                        mc_rtc::gui::Button("Clear Results",
+                                            [this]()
+                                            {
+                                              resultsProtoTMR_.clear();
+                                              resultsBoneTag_.clear();
                                             }));
 
   ctl.gui()->addElement(
@@ -358,49 +576,61 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
 
   ctl.gui()->addElement(this, {"ManipulateKnee", "Trajectory", "Thresholds"},
                         mc_rtc::gui::NumberInput(
-                            "Translation [mm]", [this]() { return translationTreshold_; },
-                            [this](double treshold) { translationTreshold_ = treshold; }),
+                            "Translation [mm]", [this]() { return convergence_.translationTreshold_; },
+                            [this](double treshold) { convergence_.translationTreshold_ = treshold; }),
                         mc_rtc::gui::NumberInput(
-                            "Rotation [deg]", [this]() { return rotationTreshold_; },
-                            [this](double treshold) { rotationTreshold_ = treshold; }));
+                            "Rotation [deg]", [this]() { return convergence_.rotationTreshold_; },
+                            [this](double treshold) { convergence_.rotationTreshold_ = treshold; }));
 
-  ctl.gui()->addElement(this, {"ManipulateKnee", "Error"},
-                        mc_rtc::gui::ArrayLabel("Tibia Error",
-                                                {"Tangage [deg]", "Roulis [deg]", "Lacet [deg]", "Left (x) [mm]",
-                                                 "Forward (y) [mm]", "Down (z) [mm]"},
-                                                [this]()
-                                                {
-                                                  Eigen::Vector6d res;
-                                                  res.head<3>() = tibiaError_.angular() * 180 / mc_rtc::constants::PI;
-                                                  res.tail<3>() = tibiaError_.linear() * 1000;
-                                                  return truncate(res);
-                                                }),
-                        mc_rtc::gui::ArrayLabel("Tibia Error (norm)", {"Rotation [deg]", "Translation [mm]"},
-                                                [this]()
-                                                {
-                                                  Eigen::Vector2d res;
-                                                  res[0] = tibiaError_.angular().norm() * 180 / mc_rtc::constants::PI;
-                                                  res[1] = tibiaError_.linear().norm() * 1000;
-                                                  return truncate(res);
-                                                }),
-                        mc_rtc::gui::ArrayLabel("Femur Error",
-                                                {"Tangage [deg]", "Roulis [deg]", "Lacet [deg]", "Left (x) [mm]",
-                                                 "Forward (y) [mm]", "Down (z) [mm]"},
-                                                [this]()
-                                                {
-                                                  Eigen::Vector6d res;
-                                                  res.head<3>() = femurError_.angular() * 180 / mc_rtc::constants::PI;
-                                                  res.tail<3>() = femurError_.linear() * 1000;
-                                                  return truncate(res);
-                                                }),
-                        mc_rtc::gui::ArrayLabel("Femur Error (norm)", {"Rotation [deg]", "Translation [mm]"},
-                                                [this]()
-                                                {
-                                                  Eigen::Vector2d res;
-                                                  res[0] = femurError_.angular().norm() * 180 / mc_rtc::constants::PI;
-                                                  res[1] = femurError_.linear().norm() * 1000;
-                                                  return truncate(res);
-                                                }));
+  auto addErrorLabels = [this, &ctl](const auto & poseError, const auto & velocityError, const std::string & prefix,
+                                     const std::vector<std::string> & path)
+  {
+    ctl.gui()->addElement(
+        this, path,
+        mc_rtc::gui::ArrayLabel(
+            prefix + " Error",
+            {"Tangage [deg]", "Roulis [deg]", "Lacet [deg]", "Left (x) [mm]", "Forward (y) [mm]", "Down (z) [mm]"},
+            [this, &poseError]()
+            {
+              Eigen::Vector6d res;
+              res.head<3>() = poseError.angular() * 180 / mc_rtc::constants::PI;
+              res.tail<3>() = poseError.linear() * 1000;
+              return truncate(res);
+            }),
+        mc_rtc::gui::ArrayLabel(prefix + " Error (norm)", {"Rotation [deg]", "Translation [mm]", "Speed"},
+                                [this, &poseError, &velocityError]()
+                                {
+                                  Eigen::Vector3d res;
+                                  res[0] = poseError.angular().norm() * 180 / mc_rtc::constants::PI;
+                                  res[1] = poseError.linear().norm() * 1000;
+                                  res[2] = velocityError.linear().norm() * 1000; // Speed as norm of linear velocity
+                                  return truncate(res);
+                                }),
+        mc_rtc::gui::ArrayLabel(prefix + " Velocity Error",
+                                {"Angular X [deg/s]", "Angular Y [deg/s]", "Angular Z [deg/s]", "Linear X [mm/s]",
+                                 "Linear Y [mm/s]", "Linear Z [mm/s]"},
+                                [this, &velocityError]()
+                                {
+                                  Eigen::Vector6d res;
+                                  res.head<3>() = velocityError.angular() * 180 / mc_rtc::constants::PI;
+                                  res.tail<3>() = velocityError.linear() * 1000;
+                                  return truncate(res);
+                                }),
+        mc_rtc::gui::ArrayLabel(prefix + " Velocity Error (angular/linear norm)",
+                                {"Angular Speed [deg/s]", "Linear Speed [mm/s]"},
+                                [this, &velocityError]()
+                                {
+                                  Eigen::Vector2d res;
+                                  res[0] = velocityError.angular().norm() * 180 / mc_rtc::constants::PI;
+                                  res[1] = velocityError.linear().norm() * 1000;
+                                  return truncate(res);
+                                }),
+        mc_rtc::gui::Label(prefix + " Velocity Error (norm)",
+                           [this, &velocityError]() { return velocityError.vector().norm(); }));
+  };
+
+  addErrorLabels(convergence_.femurError_, convergence_.femurVelocityError_, "Femur", {"ManipulateKnee", "Error"});
+  addErrorLabels(convergence_.tibiaError_, convergence_.tibiaVelocityError_, "Tibia", {"ManipulateKnee", "Error"});
 
   tibia_task_ = mc_tasks::MetaTaskLoader::load<mc_tasks::TransformTask>(ctl.solver(), config_("TibiaTask"));
   tibia_task_->reset();
@@ -410,7 +640,8 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
   ctl.solver().addTask(femur_task_);
 
   X_0_tibiaAxisInitial = ctl.robot("panda_tibia").frame("Tibia").position();
-  X_0_femurAxisInitial = X_0_tibiaAxisInitial;
+  X_0_femurAxisInitial = ctl.robot("panda_femur").frame("Femur").position();
+  // X_0_femurAxisInitial = X_0_tibiaAxisInitial;
 
   if(ctl.config().has("offsets"))
   {
@@ -423,6 +654,7 @@ void ManipulateKnee::start(mc_control::fsm::Controller & ctl)
   updateTibiaOffset(tibiaOffsetInitial_);
   updateFemurOffset(femurOffsetInitial_);
 
+  output("OK");
   run(ctl);
 }
 
@@ -454,31 +686,122 @@ bool ManipulateKnee::measure(mc_control::fsm::Controller & ctl)
   {
     return true;
   }
-  else if(!ctl.datastore().has("BoneTagSerialPlugin") || !ctl.datastore().call<bool>("BoneTagSerialPlugin::Connected"))
+  else if(!ctl.datastore().has(sensorType + "::Connected") || !ctl.datastore().call<bool>(sensorType + "::Connected"))
   {
-    mc_rtc::log::error("[{}] Requested measement of BoneTag sensors but the sensor is unavailable", name());
+    mc_rtc::log::error("[{}] Requested measement of {} sensors but the sensor is unavailable", name(), sensorType);
     return false;
   }
 
-  auto sensorData = ctl.datastore().call<std::optional<io::BoneTagSerial::Data>>("BoneTagSerialPlugin::GetNewData");
-  if(sensorData)
+  if(!newFrameRequested_)
   {
-    // mc_rtc::log::info("Got new data");
-    Result result;
-    result.femurRotation = femurRotationActual_;
-    result.femurTranslation = femurTranslationActual_;
-    result.tibiaRotation = tibiaRotationActual_;
-    result.tibiaTranslation = tibiaTranslationActual_;
-    result.sensorData = *sensorData;
-    results_.addResult(result);
-    ++measuredSamples_;
+    ctl.datastore().call(sensorType + "::RequestNewFrame");
+    mc_rtc::log::info("[{}] Requested new sensor data frame", name());
+    newFrameRequested_ = true;
   }
-  return measuredSamples_ == desiredSamples_;
+
+  // Check until we got a new frame
+  if(!ctl.datastore().call<bool>(sensorType + "::GotNewFrame"))
+  {
+    // mc_rtc::log::info("[{}] Waiting for new sensor data frame...", name());
+    return false;
+  }
+
+  if(sensorType == "BoneTagSerialPlugin")
+  {
+    measure_bonetag(ctl);
+  }
+  else if(sensorType == "ProtoTMRPlugin")
+  {
+    measure_prototmr(ctl);
+  }
+
+  ++measuredSamples_;
+
+  newFrameRequested_ = false;
+
+  if(measuredSamples_ == desiredSamples_)
+  {
+    triggerSaveResults();
+    mc_rtc::log::success("Measurement done! Got {} samples as requested", measuredSamples_);
+    return true;
+  }
+  return false;
+}
+
+void ManipulateKnee::measure_bonetag(mc_control::fsm::Controller & ctl)
+{
+  // We got a new frame
+
+  auto sensorData = ctl.datastore().call<io::BoneTagSerial::Data>(sensorType + "::GetLastFrame");
+  mc_rtc::log::success("[{}] Got new sensor data frame: {}", name(), mc_rtc::io::to_string(sensorData));
+
+  BoneTagResult result;
+  result.controllerIter = controllerIter_;
+  result.femurRotation = femurRotationActual_;
+  result.femurTranslation = femurTranslationActual_;
+  result.tibiaRotation = tibiaRotationActual_;
+  result.tibiaTranslation = tibiaTranslationActual_;
+  result.sensorData = std::move(sensorData);
+  resultsBoneTag_.addResult(result);
+}
+
+void ManipulateKnee::measure_prototmr(mc_control::fsm::Controller & ctl)
+{
+  // We got a new frame
+  auto sensorData = ctl.datastore().call<io::Serial::TimedRawData>(sensorType + "::GetLastFrame");
+  mc_rtc::log::success("[{}] Got new sensor data frame:", name());
+  for(unsigned i = 0; i < sensorData.data.size(); ++i)
+  {
+    mc_rtc::log::info("Sensor[{}]: {}", i, mc_rtc::io::to_string(sensorData.data[i]));
+  }
+
+  ProtoTMRResult result;
+  result.controllerIter = controllerIter_;
+  result.femurRotation = femurRotationActual_;
+  result.femurTranslation = femurTranslationActual_;
+  result.tibiaRotation = tibiaRotationActual_;
+  result.tibiaTranslation = tibiaTranslationActual_;
+  result.sensorData = std::move(sensorData);
+  resultsProtoTMR_.addResult(result);
+  mc_rtc::log::info("Got new data between t={}[s] and t={}[s]", result.sensorData.start_time_ms.count() / 1000,
+                    result.sensorData.end_time_ms.count() / 1000);
 }
 
 bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
 {
+  // Increase gains slowly
+  if(controllerIter_++ <= 1000)
+  {
+    auto interpGains = [this](std::string && taskName, mc_tasks::TransformTask & task)
+    {
+      const auto & taskC = config_(taskName);
+      auto tinterp = controllerIter_ / 1000.;
+      auto s = stiffnessInterp_(taskC("initial_stiffness"), taskC("stiffness"), tinterp);
+      task.stiffness(s);
+
+      if(taskC.has("initial_damping") && taskC.has("damping"))
+      {
+        auto d = stiffnessInterp_(taskC("initial_damping"), taskC("damping"), tinterp);
+        task.damping(d);
+      }
+
+      auto w = dimWeightInterp_(taskC("initial_dimWeight"), taskC("dimWeight"), tinterp);
+      task.dimWeight(w);
+    };
+    interpGains("FemurTask", *femur_task_);
+    interpGains("TibiaTask", *tibia_task_);
+    return true;
+  }
+  else if(controllerIter_++ == 1001)
+  {
+    updateTibiaOffset(tibiaOffsetInitial_);
+    updateFemurOffset(femurOffsetInitial_);
+    updateAxes(ctl);
+    return true;
+  }
+
   updateAxes(ctl);
+
   if(file_.tibiaRotationVector.empty())
   {
     if(play_)
@@ -517,27 +840,97 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
     }
     else
     {
-      bool hasConverged = false;
-      if(!continuous_)
+      // Wait until at least half of iterRate_
+      // This is done in part to ensure that convergence criteria based on speed are not triggered
+      // when the robot is still starting the motion
+      if(iter_ >= iterRate_ / 2.)
       {
-        const auto & tibia_error = tibiaError_;
-        const auto & femur_error = femurError_;
-        hasConverged = (tibia_error.angular().norm() <= mc_rtc::constants::toRad(rotationTreshold_)
-                        && tibia_error.linear().norm() <= translationTreshold_ / 1000.
-                        && femur_error.angular().norm() <= mc_rtc::constants::toRad(rotationTreshold_)
-                        && femur_error.linear().norm() <= translationTreshold_ / 1000.);
+        if(!continuous_ && !hasConverged_)
+        {
+          const auto & c = convergence_;
+          auto optionalErrorCheck = [](bool errorFlag, double errorValue, double threshold)
+          { return !errorFlag || errorValue <= threshold; };
+
+          hasConverged_ =
+              optionalErrorCheck(c.tibiaAngularError, c.tibiaError_.angular().norm(),
+                                 mc_rtc::constants::toRad(c.rotationTreshold_))
+              && optionalErrorCheck(c.tibiaLinearError, c.tibiaError_.linear().norm(), c.translationTreshold_ / 1000.)
+              && optionalErrorCheck(c.femurAngularError, c.femurError_.angular().norm(),
+                                    mc_rtc::constants::toRad(c.rotationTreshold_))
+              && optionalErrorCheck(c.femurLinearError, c.femurError_.linear().norm(), c.translationTreshold_ / 1000.)
+              && optionalErrorCheck(c.femurVelocityError, c.femurVelocityError_.linear().norm(), c.velocityThreshold_)
+              && optionalErrorCheck(c.tibiaVelocityError, c.tibiaVelocityError_.linear().norm(), c.velocityThreshold_);
+          if(hasConverged_)
+          {
+            std::ostringstream msg;
+            msg << "Convergence criteria met at iteration " << iter_ << ": ";
+
+            if(c.tibiaAngularError)
+              msg << "[Tibia angular: " << std::fixed << std::setprecision(2)
+                  << c.tibiaError_.angular().norm() * 180 / mc_rtc::constants::PI << " deg] ";
+            if(c.tibiaLinearError)
+              msg << "[Tibia linear: " << std::fixed << std::setprecision(2) << c.tibiaError_.linear().norm() * 1000
+                  << " mm] ";
+            if(c.femurAngularError)
+              msg << "[Femur angular: " << std::fixed << std::setprecision(2)
+                  << c.femurError_.angular().norm() * 180 / mc_rtc::constants::PI << " deg] ";
+            if(c.femurLinearError)
+              msg << "[Femur linear: " << std::fixed << std::setprecision(2) << c.femurError_.linear().norm() * 1000
+                  << " mm] ";
+            if(c.femurVelocityError)
+              msg << "[Femur velocity: " << std::fixed << std::setprecision(2) << c.femurVelocityError_.linear().norm()
+                  << " m/s] ";
+            if(c.tibiaVelocityError)
+              msg << "[Tibia velocity: " << std::fixed << std::setprecision(2) << c.tibiaVelocityError_.linear().norm()
+                  << " m/s] ";
+
+            mc_rtc::log::success(msg.str());
+          }
+        }
+        else
+        { // Ignore convergence criteria when running continous trajectories
+          hasConverged_ = true;
+        }
+
+        if(hasConverged_ || iter_ >= iterRate_)
+        { // We have converged to a waypoint
+          if(measure_ && !gotMeasurement_)
+          { // Start measurement
+            // mc_rtc::log::success("Stopping motion and requesting measurement at iteration {}...", iter_);
+            femur_task_->reset();
+            tibia_task_->reset();
+            // But have not yet measured a sensor frame, request a new full frame
+            // gotMeasurement_ will be set to true once we got the new frame, then we will wait until iterRate_ has been
+            // reached before going to the next waypoint
+            gotMeasurement_ = measure(ctl);
+            if(gotMeasurement_)
+            {
+              mc_rtc::log::success("Got measurement for waypoint at iteration {}, waiting until iter({})>=iterRate({})",
+                                   iter_, iter_, iterRate_);
+            }
+          }
+
+          if(
+              /*Proceed if not measuring, or if measuring and a measurement has been received.*/
+              (!measure_ || (measure_ && gotMeasurement_))
+              /*Proceed if not in continuous mode, or if in continuous mode and enough iterations have passed.*/
+              && (!continuous_ || continuous_ && iter_ >= iterRate_))
+          {
+            auto remaining = file_.tibiaRotationVector.size();
+            mc_rtc::log::info("Waypoint handled successfully, remaining: {}", remaining);
+            gotMeasurement_ = false;
+            hasConverged_ = false;
+            next_ = true;
+          }
+        }
       }
-      else
-      { // Ignore convergence criteria when running continous trajectories
-        hasConverged = true;
-      }
-      next_ = hasConverged && iter_ >= iterRate_ && measure(ctl);
     }
   }
 
-  auto handle_motion = [](mc_rbdyn::Robot & realRobot, sva::MotionVecd & error, mc_tasks::TransformTask & task,
-                          const sva::PTransformd X_0_axisFrame, Eigen::Vector3d translation, Eigen::Vector3d rotation,
-                          Eigen::Vector3d & translationActual, Eigen::Vector3d & rotationActual)
+  auto handle_motion = [](mc_rbdyn::Robot & realRobot, sva::MotionVecd & posError, sva::MotionVecd & velError,
+                          mc_tasks::TransformTask & task, const sva::PTransformd X_0_axisFrame,
+                          Eigen::Vector3d translation, Eigen::Vector3d rotation, Eigen::Vector3d & translationActual,
+                          Eigen::Vector3d & rotationActual)
   {
     translation *= 0.001; // translation in [m]
     rotation *= mc_rtc::constants::PI / 180.; // rotation in [rad]
@@ -553,16 +946,23 @@ bool ManipulateKnee::run(mc_control::fsm::Controller & ctl)
     rotationActual = mc_rbdyn::rpyFromMat(X_axisFrame_actual.rotation()) * 180 / mc_rtc::constants::PI;
 
     sva::PTransformd X_axis_target(mc_rbdyn::rpyToMat(rotation), translation);
-    error = sva::transformError(X_axisFrame_actual, X_axis_target);
+    posError = sva::transformError(X_axisFrame_actual, X_axis_target);
+    velError = sva::MotionVecd(task.speed());
   };
 
-  handle_motion(ctl.realRobot("panda_femur"), femurError_, *femur_task_, X_0_femurAxis, femurTranslation_,
-                femurRotation_, femurTranslationActual_, femurRotationActual_);
-  handle_motion(ctl.realRobot("panda_tibia"), tibiaError_, *tibia_task_, X_0_tibiaAxis, tibiaTranslation_,
-                tibiaRotation_, tibiaTranslationActual_, tibiaRotationActual_);
+  handle_motion(ctl.robot("panda_femur"), convergence_.femurError_, convergence_.femurVelocityError_, *femur_task_,
+                X_0_femurAxis, femurTranslation_, femurRotation_, femurTranslationActual_, femurRotationActual_);
+  handle_motion(ctl.robot("panda_tibia"), convergence_.tibiaError_, convergence_.tibiaVelocityError_, *tibia_task_,
+                X_0_tibiaAxis, tibiaTranslation_, tibiaRotation_, tibiaTranslationActual_, tibiaRotationActual_);
 
+  if(manualLogging_)
+  {
+    measure(ctl);
+  }
+
+  ++controllerIter_;
   ++iter_;
-  return output().size() != 0;
+  return true;
 }
 
 void ManipulateKnee::teardown(mc_control::fsm::Controller & ctl)
@@ -570,6 +970,8 @@ void ManipulateKnee::teardown(mc_control::fsm::Controller & ctl)
   ctl.solver().removeTask(tibia_task_);
   ctl.solver().removeTask(femur_task_);
   ctl.gui()->removeElements(this);
+  saveResultsThreadRunning_ = false;
+  saveResultsThread_.join();
 }
 
 EXPORT_SINGLE_STATE("ManipulateKnee", ManipulateKnee)
