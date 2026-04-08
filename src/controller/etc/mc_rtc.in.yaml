@@ -1,8 +1,5 @@
-# MainRobot:
-#   module: Panda2LIRMMDefault::BoneTag::Femur
-#   name: panda_femur
 MainRobot:
-  module: Panda2LIRMM_2::Default::BoneTag::Femur
+  module: Panda2LIRMMDefault::BoneTag::Femur
   name: panda_femur
 
 # MainRobot:
@@ -19,9 +16,12 @@ MainRobot:
 
 # MainRobot: UR10::BoneTag::Femur
 Enabled: PandaProsthesis
-Timestep: 0.001
+Timestep: 0.0013
 VerboseLoader: true
-Log: true
+Log: false
+LogDirectory: /home/vscode/workspace/logs	# need to create this directory first
+
+VerboseLoader: true
 
 # Franka specific configuration
 Franka:
